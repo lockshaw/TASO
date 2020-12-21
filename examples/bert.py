@@ -1,4 +1,9 @@
 import taso as ts
+import onnx
+from pathlib import Path
+
+DIR = Path(__file__).parent
+OUTPUT_DIR = DIR / 'optimized'
 
 seq_length = 64
 hidden_dims = 1024
@@ -41,4 +46,9 @@ t = input
 for i in range(8):
     t = attention(graph, t, 16)
 
-new_graph = ts.optimize(graph, alpha=1.0, budget=100)
+for i, new_graph in enumerate(ts.optimize_multi(graph, alpha=1.1, budget=600, numResults=10)):
+    print(new_graph.cost(), new_graph.hash())
+    onnx_model = ts.export_onnx(new_graph)
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+    onnx.save(onnx_model, OUTPUT_DIR / f'variant_{i}.onnx')
+#new_graph = ts.optimize(graph, alpha=1.0, budget=100)

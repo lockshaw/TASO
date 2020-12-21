@@ -156,7 +156,7 @@ cdef extern from "taso/ops.h" namespace "taso":
         Op srcOp
         Op dstOp
         int srcIdx
-        int dstIdx    
+        int dstIdx
 
     ctypedef struct Tensor:
         int numDim
@@ -260,6 +260,7 @@ cdef extern from "taso/ops.h" namespace "taso":
         TensorHandle new_input(int ndim, const int* dims)
         TensorHandle new_weight(int ndim, const int* dims, const float* data)
         Graph* optimize(float alpha, int budget, bool print_subst)
+        vector[Graph*] optimizeMulti(float alpha, int budget, bool print_subst, int numResults)
         int get_operator_list(Op* ops, size_t maxNumOps)
         int get_input_edges(Edge* edges, size_t guid)
         OpType get_operator_type(size_t guid)
@@ -273,3 +274,4 @@ cdef extern from "taso/ops.h" namespace "taso":
         void print_measurements()
         float total_cost()
         float run()
+        size_t hash()

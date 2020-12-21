@@ -132,7 +132,7 @@ struct SubEdgeCompare {
 
 class GraphCompare {
 public:
-  bool operator() (Graph* lhs, Graph* rhs) {
+  bool operator() (Graph* const &lhs, Graph* const &rhs) const {
     return lhs->total_cost() > rhs->total_cost();
   }
 };
@@ -164,7 +164,7 @@ public:
   OpX* create_fuse_conv_batchnorm(TensorX conv_w, TensorX scale,
                                   TensorX bias, TensorX mean, TensorX var,
                                   bool isSrcOp = true);
-  OpX* create_fuse_conv_batchnorm_alpha_var(TensorX conv_w, TensorX scale, 
+  OpX* create_fuse_conv_batchnorm_alpha_var(TensorX conv_w, TensorX scale,
                                             TensorX var, bool isSrcOp = true);
   OpX* create_fuse_conv_batchnorm_bias(TensorX scale,
                                            TensorX bias, TensorX mean,

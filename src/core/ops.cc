@@ -15,8 +15,11 @@
 
 #include "taso/ops.h"
 #include "taso/substitution.h"
+#include "taso/boundedpq.h"
 #include <iostream>
 #include <fstream>
+#include <memory>
+
 using namespace std;
 using namespace taso;
 
@@ -437,6 +440,7 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   //xfers.push_back(create_enlarge_conv_xfer(model));
   //xfers.push_back(create_resnet_merge_xfer(model));
 
+  //BoundedPriorityQueue<Graph*, std::vector<Graph*>, GraphCompare> candidates(budget);
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::set<size_t> hashmap;
   candidates.push(this);
@@ -463,7 +467,7 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
       bestGraph = subGraph;
     }
     if (counter > budget) {
-      // TODO: free all remaining candidates when budget exhausted 
+      // TODO: free all remaining candidates when budget exhausted
       break;
     }
     if (counter % 1 == 0) {
@@ -504,6 +508,121 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
     }
   }
   return bestGraph;
+}
+
+std::vector<Graph *> Graph::optimizeMulti(float alpha, int budget, bool print_subst, int numResults) {
+  std::vector<GraphXfer*> xfers;
+  for (int i = 1; i < 3; i++)
+    for (int j = 0; j < 2; j++) {
+      PaddingMode pad_mode = (j == 0) ? PD_MODE_SAME : PD_MODE_VALID;
+      xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode));
+      xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode));
+      xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode));
+      //xfers.push_back(GraphXfer::create_conv_add(model, i, i, pad_mode));
+    }
+  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE));
+  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU));
+
+  //xfers.push_back(create_avg_pool_conv(model));
+  //xfers.push_back(create_two_pools(model));
+  //xfers.push_back(create_merge_seperable_convs(model));
+  char* taso_path = getenv("TASO_HOME");
+  if (taso_path == NULL) {
+    fprintf(stderr, "Error: environment variable TASO_HOME is not set. "
+           "Please set TASO_HOME to the home directory of TASO source code.\n");
+    assert(false);
+  }
+  std::string graph_subst_file = std::string(taso_path) + "/graph_subst.pb";
+  GraphXfer::load_graph_xfer_from_pb_file(model, xfers, graph_subst_file);
+  //xfers.push_back(create_fuse_conv_batch_xfer(model));
+  //xfers.push_back(create_fuse_conv_relu_xfer(model));
+  //xfers.push_back(create_merge_conv_xfer(model));
+  //xfers.push_back(create_exclusive_concat_xfer(model));
+  //xfers.push_back(create_enlarge_conv_xfer(model));
+  //xfers.push_back(create_resnet_merge_xfer(model));
+
+  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
+  std::set<size_t> hashmap;
+  BoundedPriorityQueue<Graph *, std::vector<Graph*>, GraphCompare> topN(numResults);
+  candidates.push(this);
+  hashmap.insert(hash());
+  float bestCost = total_cost();
+  //printf("MetaFlow Cost = %.4lfms\n", bestCost);
+  //printf("Input graph: end-to-end execution time =\n"
+  //       "%.8lf ms (average of 100 runs)\n", run());
+  print_costs();
+
+  int counter = 0;
+  int maxNumOps = inEdges.size();
+  //long long start_time = microsecond_timer();
+  ofstream timer_fs;
+  timer_fs.open("timer.txt");
+  printf("\n        ===== Start Cost-Based Backtracking Search =====\n");
+  Graph *evicted;
+  bool shouldDelete;
+  while (!candidates.empty()) {
+    printf("Yo here\n");
+    Graph *subGraph = candidates.top();
+    candidates.pop();
+    bestCost = min(bestCost, subGraph->total_cost());
+    if (counter % 2 == 0) {
+      shouldDelete = topN.push(subGraph, &evicted);
+    } else {
+      evicted = subGraph;
+      shouldDelete = true;
+    }
+
+    if (counter > budget) {
+      // TODO: free all remaining candidates when budget exhausted
+      break;
+    }
+    if (counter % 1 == 0) {
+      printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu topN.size() = %zu\n", counter, subGraph->total_cost(), bestCost, candidates.size(), topN.size());
+      //timer_fs << microsecond_timer() - start_time << ", " << bestCost << std::endl;
+    }
+    counter ++;
+    for (size_t i = 0; i < xfers.size(); i++) {
+      //for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) {
+      //  printf("srcOps[%zu]: type(%d)\n", j, xfers[i]->srcOps[j]->type);
+      //}
+      //for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) {
+      //  printf("dstOps[%zu]: type(%d)\n", j, xfers[i]->dstOps[j]->type);
+      //}
+      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps);
+    }
+    if (shouldDelete) {
+      delete evicted;
+    }
+  }
+  std::vector<Graph *> processed;
+  while (!topN.empty()) {
+    fprintf(stderr, "Adding dude\n");
+    auto topCandidate = topN.pop();
+    processed.push_back(topCandidate->preprocess_weights());
+  }
+  printf("        ===== Finish Cost-Based Backtracking Search =====\n\n");
+  //printf("bestCost = %.4lf\n", bestGraph->total_cost());
+  //printf("Optimized graph: end-to-end execution time =\n");
+  //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run());
+  /* bestGraph->print_costs(); */
+  /* if (print_subst) { */
+  /*   printf("        ===== Applied Substitutions =====\n\n"); */
+  /*   for (size_t i = 0; i < bestGraph->subst_history.size(); i++) { */
+  /*     printf("        substitution[%03zu]: \n", i); */
+  /*     Graph::GraphSubst subst = bestGraph->subst_history[i]; */
+  /*     for (size_t j = 0; j < subst.srcOps.size(); j++) { */
+  /*       printf("            srcOp[%zu]: %s\n", j, subst.srcOps[j].to_string().c_str()); */
+  /*     } */
+  /*     for (size_t j = 0; j < subst.dstOps.size(); j++) { */
+  /*       printf("            dstOp[%zu]: %s\n", j, subst.dstOps[j].to_string().c_str()); */
+  /*     } */
+  /*   } */
+  /* } */
+  return processed;
 }
 
 Graph* Graph::preprocess_weights(void)
@@ -876,7 +995,7 @@ void Graph::export_op(ofstream &file_stream, Op &op)
 
   switch (op.ptr->type) {
     case OP_CONV2D:
-    { 
+    {
       Conv2D* conv = (Conv2D*) op.ptr;
       Tensor t = conv->inputs[0];
       Tensor w = conv->inputs[1];
@@ -1054,7 +1173,7 @@ void Graph::print(void)
   std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it;
   for (it = inEdges.begin(); it != inEdges.end(); it++) {
     if (it->first.guid == 0) continue;
-    printf("	guid(%zu) type(%d) runtime(%.4lf): ", it->first.guid, it->first.ptr->type, it->first.ptr->runtime);    
+    printf("	guid(%zu) type(%d) runtime(%.4lf): ", it->first.guid, it->first.ptr->type, it->first.ptr->runtime);
     std::set<Edge, EdgeCompare> list = it->second;
     std::set<Edge, EdgeCompare>::const_iterator it2;
     for (it2 = list.begin(); it2 != list.end(); it2++) {

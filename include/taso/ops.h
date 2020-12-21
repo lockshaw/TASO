@@ -433,7 +433,7 @@ enum ActiMode {
   AC_MODE_NONE,
   AC_MODE_SIGMOID,
   AC_MODE_RELU,
-  AC_MODE_TANH, 
+  AC_MODE_TANH,
 };
 
 //That this must be consistent with python/taso/_cython/CCore.pxd
@@ -642,6 +642,7 @@ public:
   // Helper Functions for Cython
   Op find_op_or_fail(size_t guid);
   Graph* optimize(float alpha, int budget, bool print_subst);
+  std::vector<Graph *> optimizeMulti(float alpha, int budget, bool print_subst, int numResults);
   Graph* preprocess_weights(void);
   int get_operator_list(Op* opList, size_t maxNumOps);
   int get_input_edges(Edge* opList, size_t guid);
@@ -1272,7 +1273,7 @@ struct PadKey {
   int keys[KEY_LENGTH];
 };
 
-// keys are (inputN, inputC, inputH, inputW, kernelH, kernelW,              
+// keys are (inputN, inputC, inputH, inputW, kernelH, kernelW,
 //           strideH, strideW, padding, activation, type,
 //           input.split[0], input.split[1]
 struct Pool2DKey {

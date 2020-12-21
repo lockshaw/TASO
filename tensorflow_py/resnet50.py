@@ -1,5 +1,6 @@
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior() 
 import argparse
-import tensorflow as tf
 import numpy as np
 import time
 from shared_functions import make_activation, make_conv2d

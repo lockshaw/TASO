@@ -227,7 +227,7 @@ bool get_parameter_from_pb(const GraphSubst::Operator& pbOp,
       value = pbOp.para(i).value();
       return true;
     }
-  return false;  
+  return false;
 }
 
 void GraphXfer::create_operator_from_pb(const GraphSubst::Operator& pbOp,
