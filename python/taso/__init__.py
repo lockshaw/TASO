@@ -939,5 +939,8 @@ def export_onnx(graph):
 def optimize(graph, alpha = 1.0, budget = 1000, print_subst = False):
     return graph.optimize(alpha, budget, print_subst)
 
+def optimize_multi(graph, alpha = 1.0, budget = 1000, print_subst = False, numResults = 10):
+    return graph.optimize_multi(alpha, budget, print_subst, numResults)
+
 # Current TASO Version
 __version__ = "0.1.0"

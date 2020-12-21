@@ -25,8 +25,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Protobuf REQUIRED)
 message(STATUS "PROTOBUF=" ${PROTOBUF_LIBRARY})
 include_directories(${PROTOBUF_INCLUDE_DIR})
-protobuf_generate_cpp(PROTO_CPPS PROTO_HDRS src/core/rules.proto)
+protobuf_generate_cpp(PROTO_RULE_CPP PROTO_RULE_HDR src/core/rules.proto)
+protobuf_generate_cpp(PROTO_STRAT_CPP PROTO_STRAT_HDR src/core/strategy.proto)
+list(APPEND PROTO_CPPS ${PROTO_RULE_CPP})
+list(APPEND PROTO_CPPS ${PROTO_STRAT_CPP})
+list(APPEND PROTO_HDRS ${PROTO_RULE_HDR})
+list(APPEND PROTO_HDRS ${PROTO_STRAT_HDR})
 list(APPEND TASO_LINK_LIBS ${PROTOBUF_LIBRARY})
+message("Protobuf headers=" ${PROTO_HDRS})
+message("Protobuf cpps=" ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_SRCS
   src/core/*.cc
@@ -116,12 +123,27 @@ install(TARGETS taso_runtime
 install (DIRECTORY ${PROJECT_SOURCE_DIR}/include
     DESTINATION .)
 
-if ("${BUILD_CPP_EXAMPLES}" STREQUAL "ON")
+option(BUILD_CPP_EXAMPLES "Build C++ examples" OFF)
+
+if (BUILD_CPP_EXAMPLES)
   set(CPP_EXAMPLES_DIR cpp_examples)
   set(CPP_EXAMPLES_BIN dnn)
   file(GLOB CPP_EXAMPLES_SRCS ${CPP_EXAMPLES_DIR}/*.cc)
   add_executable(${CPP_EXAMPLES_BIN} ${CPP_EXAMPLES_SRCS})
   set_target_properties(${CPP_EXAMPLES_BIN}
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CPP_EXAMPLES_DIR})
-  target_link_libraries(${CPP_EXAMPLES_BIN} taso_runtime)
+  target_link_libraries(${CPP_EXAMPLES_BIN} ${TASO_LINK_LIBS} taso_runtime)
+endif()
+
+option(BUILD_TESTS "Build tests" OFF)
+
+if (BUILD_TESTS)
+  set(CPP_TESTS_DIR test)
+  set(CPP_TESTS_BIN run_tests)
+  file(GLOB CPP_TESTS_SRCS ${CPP_TESTS_DIR}/*.cc)
+  add_executable(${CPP_TESTS_BIN} ${CPP_TESTS_SRCS})
+  target_compile_features(${CPP_TESTS_BIN} PUBLIC cxx_std_14)
+  set_target_properties(${CPP_TESTS_BIN}
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CPP_TESTS_DIR})
+  target_link_libraries(${CPP_TESTS_BIN} ${TASO_LINK_LIBS} taso_runtime)
 endif()

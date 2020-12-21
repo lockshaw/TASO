@@ -21,6 +21,7 @@ from cpython cimport array
 import ctypes
 import array
 import numpy as np
+from cython.operator cimport dereference as deref, preincrement as inc
 
 #helper function
 def get_padding_mode(padding):
@@ -87,7 +88,7 @@ cdef class PyTensor:
                 return None
             else:
                 return ctypes.cast(<unsigned long long>self.ctensor, ctypes.c_void_p)
-        
+
         def __set__(self, value):
             self._set_tensor(value)
 
@@ -200,7 +201,7 @@ cdef class PyGraph:
         datatype = get_data_type(datatype)
         cdef TensorHandle handle = self.p_graph.cast(input.ctensor, datatype)
         t = ctypes.cast(<unsigned long long>handle, ctypes.c_void_p)
-        return PyTensor(t)    
+        return PyTensor(t)
 
     def ceil(self, *, PyTensor input):
         cdef TensorHandle handle = self.p_graph.ceil(input.ctensor)
@@ -430,7 +431,7 @@ cdef class PyGraph:
         cend.resize(len(end))
         for i in range(len(end)):
             cend[i] = end[i]
-        if axes: 
+        if axes:
             caxes.resize(len(axes))
             for i in range(len(axes)):
                 caxes[i] = axes[i]
@@ -542,6 +543,19 @@ cdef class PyGraph:
         cdef Graph* new_graph = self.p_graph.optimize(alpha, budget, print_subst)
         graph = ctypes.cast(<unsigned long long>new_graph, ctypes.c_void_p)
         return PyGraph(graph)
+
+    def optimize_multi(self, float alpha, int budget, bool print_subst, int numResults):
+        cdef vector[Graph*] results = self.p_graph.optimizeMulti(alpha, budget, print_subst, numResults)
+        cdef vector[Graph*].iterator it = results.begin()
+        graphs = list()
+        while it != results.end():
+            graph = ctypes.cast(<unsigned long long>deref(it), ctypes.c_void_p)
+            graphs.append(PyGraph(graph))
+            inc(it)
+        return graphs
+
+    def hash(self):
+        return self.p_graph.hash()
 
     def get_operator_list(self):
         cdef Op ops[4192]
