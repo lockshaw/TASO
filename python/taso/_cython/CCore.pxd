@@ -18,6 +18,7 @@
 from libcpp.memory cimport shared_ptr
 from libcpp.vector cimport vector
 from libcpp cimport bool
+from libcpp.string cimport string
 
 cdef extern from "taso/ops.h" namespace "taso":
     # This must be consistent with include/taso/ops.h
@@ -115,6 +116,7 @@ cdef extern from "taso/ops.h" namespace "taso":
         PM_OUTSHUFFLE
         PM_MERGE_GCONV_COUNT
         PM_AXES
+        PM_KEEP_DIMS
         PM_EPSILON
 
     # This must be consistent with include/taso/ops.h

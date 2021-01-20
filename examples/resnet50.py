@@ -1,4 +1,5 @@
 import taso as ts
+import onnx
 
 def resnet_block(graph, input, strides, out_channels):
     w1 = graph.new_weight(dims=(out_channels,input.dim(1),1,1))
