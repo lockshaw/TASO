@@ -94,6 +94,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("batch_size", type=int)
     p.add_argument("--output-dir", "-o", type=Path, default=DEFAULT_MODEL_PATH)
+    p.add_argument("--export", action="store_true", default=False)
+    p.add_argument("--print-subst", action="store_true", default=False)
+    p.add_argument("--budget", "-b", default=100, type=int)
+    p.add_argument("--alpha", default=1.05, type=float)
+    p.add_argument("--debug-dir", "-d", type=Path, default=None)
+    p.add_argument("--normal-cells", "-n", type=int, default=5)
     args = p.parse_args()
     batch_size = args.batch_size
     graph = ts.new_graph()
@@ -107,7 +113,7 @@ if __name__ == "__main__":
     for i in range(3):
         prev = input
         cur = input
-        for j in range(5):
+        for j in range(args.normal_cells):
             t = normal_cell(graph, prev, cur, out_channels)
             prev = cur
             cur = t
@@ -118,8 +124,18 @@ if __name__ == "__main__":
     #t = dense(graph, t, 1000, "RELU")
     #t = softmax(t)
     unoptimized_model = ts.export_onnx(graph)
-    onnx.checker.check_model(unoptimized_model)
-    onnx.save(unoptimized_model, str(args.output_dir / f"nasneta_{batch_size}_unoptimized.onnx"))
-    _optimized_model = ts.optimize(graph, alpha=1.05, budget=100)
-    optimized_model = ts.export_onnx(_optimized_model)
-    onnx.save(optimized_model, str(args.output_dir / f"nasneta_{batch_size}_optimized.onnx"))
+    debug_dir = None
+    if args.debug_dir is not None:
+        debug_dir = args.debug_dir.resolve()
+        debug_dir.mkdir(parents=True)
+    if debug_dir is not None:
+        graph.export_to_file(str(debug_dir / "unoptimized.txt").encode())
+    if args.export:
+        onnx.checker.check_model(unoptimized_model)
+        onnx.save(unoptimized_model, str(args.output_dir / f"nasneta_{batch_size}_unoptimized_n{args.normal_cells}.onnx"))
+    _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, print_subst=args.print_subst)
+    if debug_dir is not None:
+        _optimized_model.export_to_file(str(debug_dir / "optimized.txt").encode())
+    if args.export:
+        optimized_model = ts.export_onnx(_optimized_model)
+        onnx.save(optimized_model, str(args.output_dir / f"nasneta_{batch_size}_optimized_n{args.normal_cells}.onnx"))

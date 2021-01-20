@@ -15,6 +15,8 @@
 
 #include "taso/ops.h"
 #include "taso/cuda_helper.h"
+#include <limits>
+
 using namespace taso;
 
 void Conv2D::map(void)
@@ -172,50 +174,51 @@ void Model::measure_conv2d_cost(Conv2D* conv)
   size_t filterSize = sizeof(DATATYPE) * inputC * outputC
                       * kernelH * kernelW;
   size_t outputSize = sizeof(DATATYPE) * n * c * h * w;
-  assert(inputSize < MAX_TENSOR_SIZE);
-  assert(filterSize < MAX_TENSOR_SIZE);
-  assert(outputSize < MAX_TENSOR_SIZE);
 
-  const int reqAlgCnt = 8;
-  int cnt = 0;
-  cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
-  checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
-      dnn, inputTensor, inputPtr, filterDesc, filterPtr, convDesc,
-      outputTensor, outputPtr, reqAlgCnt, &cnt, perfResults,
-      workSpace, workSpaceSize));
-  assert(cnt > 0);
-  checkCUDNN(perfResults[0].status);
-  //for (int i = 0; i < cnt; i++) {
-    //printf("fwdAlgo(%d) time(%.2lfms) space(%dMB)\n", perfResults[i].algo,
-    //       perfResults[i].time, perfResults[i].memory / 1024 / 1024);
-  //}
-  conv->fwdAlgo = perfResults[0].algo;
- 
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < WARMUP_TIMES + REPEAT_TIMES; i++) {
-    if (i == WARMUP_TIMES) {
-      checkCUDA(cudaEventRecord(startEvent));
+  if (inputSize < MAX_TENSOR_SIZE && filterSize < MAX_TENSOR_SIZE && outputSize < MAX_TENSOR_SIZE) {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
+    cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
+    checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
+        dnn, inputTensor, inputPtr, filterDesc, filterPtr, convDesc,
+        outputTensor, outputPtr, reqAlgCnt, &cnt, perfResults,
+        workSpace, workSpaceSize));
+    assert(cnt > 0);
+    checkCUDNN(perfResults[0].status);
+    //for (int i = 0; i < cnt; i++) {
+      //printf("fwdAlgo(%d) time(%.2lfms) space(%dMB)\n", perfResults[i].algo,
+      //       perfResults[i].time, perfResults[i].memory / 1024 / 1024);
+    //}
+    conv->fwdAlgo = perfResults[0].algo;
+
+    checkCUDA(cudaDeviceSynchronize());
+    for (int i = 0; i < WARMUP_TIMES + REPEAT_TIMES; i++) {
+      if (i == WARMUP_TIMES) {
+        checkCUDA(cudaEventRecord(startEvent));
+      }
+      if (conv->activation != AC_MODE_NONE) {
+        checkCUDNN(cudnnConvolutionBiasActivationForward(
+            dnn, &alpha, inputTensor, inputPtr, filterDesc, filterPtr,
+            convDesc, conv->fwdAlgo, workSpace, workSpaceSize,
+            &beta, outputTensor, outputPtr, biasTensor, biasPtr, actiDesc,
+            outputTensor, outputPtr));
+      } else {
+        checkCUDNN(cudnnConvolutionForward(
+            dnn, &alpha, inputTensor, inputPtr, filterDesc, filterPtr,
+            convDesc, conv->fwdAlgo, workSpace, workSpaceSize,
+            &beta, outputTensor, outputPtr));
+        checkCUDNN(cudnnAddTensor(dnn, &alpha, biasTensor, biasPtr,
+            &alpha, outputTensor, outputPtr));
+      }
     }
-    if (conv->activation != AC_MODE_NONE) {
-      checkCUDNN(cudnnConvolutionBiasActivationForward(
-          dnn, &alpha, inputTensor, inputPtr, filterDesc, filterPtr,
-          convDesc, conv->fwdAlgo, workSpace, workSpaceSize,
-          &beta, outputTensor, outputPtr, biasTensor, biasPtr, actiDesc,
-          outputTensor, outputPtr));
-    } else {
-      checkCUDNN(cudnnConvolutionForward(
-          dnn, &alpha, inputTensor, inputPtr, filterDesc, filterPtr,
-          convDesc, conv->fwdAlgo, workSpace, workSpaceSize,
-          &beta, outputTensor, outputPtr));
-      checkCUDNN(cudnnAddTensor(dnn, &alpha, biasTensor, biasPtr,
-          &alpha, outputTensor, outputPtr));
-    }
+    checkCUDA(cudaEventRecord(endEvent));
+    checkCUDA(cudaEventSynchronize(endEvent));
+    float milliseconds;
+    cudaEventElapsedTime(&milliseconds, startEvent, endEvent);
+    conv->runtime = milliseconds / REPEAT_TIMES;
+  } else {
+    conv->runtime = std::numeric_limits<float>::infinity();
   }
-  checkCUDA(cudaEventRecord(endEvent));
-  checkCUDA(cudaEventSynchronize(endEvent));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, startEvent, endEvent);
-  conv->runtime = milliseconds / REPEAT_TIMES;
   if (print_cost)
     printf("  measure[Conv2D]: i(%d %d %d %d) w(%d %d %d %d) s(%d %d) p(%d %d) cost(%.4lf)\n",
            conv->inputs[0].dim[0], conv->inputs[0].dim[1], conv->inputs[0].dim[2], conv->inputs[0].dim[3],

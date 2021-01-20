@@ -22,6 +22,7 @@ import ctypes
 import array
 import numpy as np
 from cython.operator cimport dereference as deref, preincrement as inc
+from libcpp.string cimport string
 
 #helper function
 def get_padding_mode(padding):
@@ -676,3 +677,4 @@ cdef class PyGraph:
             return [0]
         else:
            assert False, 'Internal error: unknow attribute {}'.format(attrname)
+
