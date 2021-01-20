@@ -125,27 +125,32 @@ void Model::measure_conv2d_cost(Conv2D* conv)
   int groups = conv->inputs[0].dim[1] / conv->inputs[1].dim[1];
   int padH, padW;
   // Reference: https://www.tensorflow.org/api_guides/python/nn#Convolution
-  switch (conv->padding) {
-    case PD_MODE_SAME:
-      int totalPadH, totalPadW;
-      if (inputH % conv->strideH == 0)
-        totalPadH = max(kernelH - conv->strideH, 0);
-      else
-        totalPadH = max(kernelH - (inputH % conv->strideH), 0);
-      if (inputW % conv->strideW == 0)
-        totalPadW = max(kernelW - conv->strideW, 0);
-      else
-        totalPadW = max(kernelW - (inputW % conv->strideW), 0);
-      // assert same padding on both sides
-      padH = (totalPadH + 1) / 2;
-      padW = (totalPadW + 1) / 2;
-      break;
-    case PD_MODE_VALID:
-      padH = 0;
-      padW = 0;
-      break;
-    default:
-      assert(false);
+  if (conv->usePaddingMode) {
+    switch (conv->padding) {
+      case PD_MODE_SAME:
+        int totalPadH, totalPadW;
+        if (inputH % conv->strideH == 0)
+          totalPadH = max(kernelH - conv->strideH, 0);
+        else
+          totalPadH = max(kernelH - (inputH % conv->strideH), 0);
+        if (inputW % conv->strideW == 0)
+          totalPadW = max(kernelW - conv->strideW, 0);
+        else
+          totalPadW = max(kernelW - (inputW % conv->strideW), 0);
+        // assert same padding on both sides
+        padH = (totalPadH + 1) / 2;
+        padW = (totalPadW + 1) / 2;
+        break;
+      case PD_MODE_VALID:
+        padH = 0;
+        padW = 0;
+        break;
+      default:
+        assert(false);
+    }
+  } else {
+    padH = conv->padH;
+    padW = conv->padW;
   }
   checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor, CUDNN_TENSOR_NCHW,
       CUDNN_DATA_FLOAT, inputN, inputC, inputH, inputW));

@@ -393,6 +393,9 @@ enum PMParameter {
   PM_KERNEL_W,		// Conv2D, Pool2D
   PM_STRIDE_H,		// Conv2D, Pool2D
   PM_STRIDE_W,		// Conv2D, Pool2D
+  PM_USE_PADDING_MODE, // Conv2D
+  PM_PAD_H, // Conv2D
+  PM_PAD_W, // Conv2D
   PM_PAD,		// Conv2D, Pool2D
   PM_ACTI,		// Conv2D, Pool2D
   PM_NUMDIM,		// Concat, Transpose
@@ -523,9 +526,20 @@ public:
                       PaddingMode _padding,
                       ActiMode _activation = AC_MODE_NONE);
   TensorHandle conv2d(const TensorHandle _input,
+                      int _outputC,
+                      int _kernelH, int _kernelW,
+                      int _strideH, int _strideW,
+                      int _padH, int _padW,
+                      ActiMode _activation = AC_MODE_NONE);
+  TensorHandle conv2d(const TensorHandle _input,
                       const TensorHandle _weight,
                       int _strideH, int _strideW,
                       PaddingMode _padding,
+                      ActiMode _activation = AC_MODE_NONE);
+  TensorHandle conv2d(const TensorHandle _input,
+                      const TensorHandle _weight,
+                      int _strideH, int _strideW,
+                      int _padH, int _padW,
                       ActiMode _activation = AC_MODE_NONE);
   TensorHandle dropout(const TensorHandle _input);
   TensorHandle element(OpType type,
@@ -695,10 +709,19 @@ public:
 };
 
 class Conv2D : public OpBase {
+private:
+  void initialize(Model *_model, Tensor _input, Tensor _weight,
+                  int _strideH, int _strideW,
+                  int _outputH, int _outputW,
+                  ActiMode _activation);
 public:
   Conv2D(Model* _model, Tensor _input, Tensor _weight,
          int _strideH, int _strideW,
          PaddingMode _padding,
+         ActiMode _activation);
+  Conv2D(Model* _model, Tensor _input, Tensor _weight,
+         int _strideH, int _strideW,
+         int _padH, int _padW,
          ActiMode _activation);
   ~Conv2D(void);
   void forward(bool block);
@@ -719,7 +742,9 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
 #endif
   int strideH, strideW;
+  bool usePaddingMode;
   PaddingMode padding;
+  int padH, padW;
   ActiMode activation;
   void *biasPtr;
 };
@@ -1181,11 +1206,26 @@ struct ConstantKey {
   int keys[KEY_LENGTH];
 };
 
+struct Conv2DPaddingPair {
+  int padH;
+  int padW;
+};
+
+struct Conv2DPadding {
+  bool usePaddingMode;
+  union {
+    PaddingMode paddingMode;
+    Conv2DPaddingPair padding;
+  };
+};
+
+// keys are (strideH, strideW, usePaddingMode=true , paddingMode, 0   , activation, input, weight)
+// or       (strideH, strideW, usePaddingMode=false, padH,        padW, activation, input, weight)
 // keys are (strideH, strideW, padding, activation, input, weight)
 struct Conv2DKey {
   static const int KEY_LENGTH = Tensor::MAX_KEY_LENGTH * 2 + 4;
   Conv2DKey(Tensor, Tensor, int, int,
-            PaddingMode, ActiMode);
+            Conv2DPadding, ActiMode);
   int keys[KEY_LENGTH];
 };
 
@@ -1364,6 +1404,10 @@ public:
   Op get_or_create_conv2d(Tensor _input, Tensor _weight,
                           int _strideH, int _strideW,
                           PaddingMode _padding,
+                          ActiMode _activation);
+  Op get_or_create_conv2d(Tensor _input, Tensor _weight,
+                          int _strideH, int _strideW,
+                          int _padH, int _padW,
                           ActiMode _activation);
   Op get_or_create_element(OpType type, const Tensor& t1, const Tensor& t2);
   Op get_or_create_elementwise_unary(const Tensor& _input, OpType _type);

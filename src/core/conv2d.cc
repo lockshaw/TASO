@@ -87,6 +87,41 @@ TensorHandle Graph::conv2d(const TensorHandle _input,
                 _padding, _activation);
 }
 
+TensorHandle Graph::conv2d(const TensorHandle _input,
+                           int _outputC,
+                           int _kernelH, int _kernelW,
+                           int _strideH, int _strideW,
+                           int _padH, int _padW,
+                           ActiMode _activation)
+{
+  const int dims[4] = {_outputC, _input->dim[1], _kernelH, _kernelW};
+  int total = dims[0] * dims[1] * dims[2] * dims[3];
+  // Randomly initialize weights
+  DATATYPE* data = (DATATYPE*) malloc(total * sizeof(DATATYPE));
+  for (int i = 0; i < total; i++)
+    data[i] = (DATATYPE)std::rand() / RAND_MAX;
+  TensorHandle weight = new_weight(4, dims, data);
+  free(data);
+/*
+  weight.numDim = 4;
+  weight.dim[0] = _outputC;
+  weight.dim[1] = _input.dim[1];
+  weight.dim[2] = _kernelH;
+  weight.dim[3] = _kernelW;
+  weight.stride[3] = 1;
+  weight.stride[2] = weight.stride[3] * weight.dim[3];
+  weight.stride[1] = weight.stride[2] * weight.dim[2];
+  weight.stride[0] = weight.stride[1] * weight.dim[1];
+  weight.op.guid = GUID_WEIGHT;
+  weight.op.ptr = NULL;
+  weight.idx = 0;
+  weight = noop(weight);
+*/
+  return conv2d(_input, weight, _strideH, _strideW,
+                _padH, _padW, _activation);
+}
+
+
 /*
 Tensor Graph::conv2d(Tensor _input, Tensor _weight,
                      int _strideH, int _strideW,
@@ -119,6 +154,22 @@ TensorHandle Graph::conv2d(const TensorHandle _input,
   return t;
 }
 
+TensorHandle Graph::conv2d(const TensorHandle _input,
+                           const TensorHandle _weight,
+                           int _strideH, int _strideW,
+                           int _padH, int _padW,
+                           ActiMode _activation)
+{
+  Op op = model->get_or_create_conv2d(*_input, *_weight, _strideH, _strideW,
+                                      _padH, _padW, _activation);
+  assert(op != Op::INVALID_OP);
+  add_edge(_input->op, op, _input->idx, 0);
+  add_edge(_weight->op, op, _weight->idx, 1);
+  TensorHandle t = new Tensor(op.ptr->outputs[0]);
+  t->op = op;
+  return t;
+}
+
 Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
                                int _strideH, int _strideW,
                                PaddingMode _padding,
@@ -128,7 +179,10 @@ Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
     return Op::INVALID_OP;
   // key is (inputN, inputC, inputH, inputW, outputC, kernelH, kernelW,
   //         strideH, strideW, padding, activation)
-  Conv2DKey key(_input, _weight, _strideH, _strideW, _padding, _activation);
+  Conv2DPadding p;
+  p.usePaddingMode = true;
+  p.paddingMode = _padding;
+  Conv2DKey key(_input, _weight, _strideH, _strideW, p, _activation);
   Conv2D* convOp;
   if (conv2d.find(key) != conv2d.end()) {
     convOp = conv2d[key];
@@ -144,14 +198,41 @@ Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
   return ret;
 }
 
-Conv2D::Conv2D(Model* _model, Tensor _input, Tensor _weight,
-               int _strideH, int _strideW,
-               PaddingMode _padding,
-               ActiMode _activation)
-: OpBase(_input, _weight, _model, OP_CONV2D),
-  strideH(_strideH), strideW(_strideW),
-  padding(_padding), activation(_activation)
+Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
+                               int _strideH, int _strideW,
+                               int _padH, int _padW,
+                               ActiMode _activation)
 {
+  if (_input.dim[1] % _weight.dim[1] != 0)
+    return Op::INVALID_OP;
+  // key is (inputN, inputC, inputH, inputW, outputC, kernelH, kernelW,
+  //         strideH, strideW, padding, activation)
+  Conv2DPadding p;
+  p.usePaddingMode = false;
+  p.padding.padH = _padH;
+  p.padding.padW = _padW;
+  Conv2DKey key(_input, _weight, _strideH, _strideW, p, _activation);
+  Conv2D* convOp;
+  if (conv2d.find(key) != conv2d.end()) {
+    convOp = conv2d[key];
+  } else {
+    convOp = new Conv2D(this, _input, _weight, _strideH, _strideW,
+                        _padH, _padW, _activation);
+    measure_conv2d_cost(convOp);
+    conv2d[key] = convOp;
+  }
+  Op ret;
+  ret.guid = global_unique_id ++;
+  ret.ptr = convOp;
+  return ret;
+}
+
+void Conv2D::initialize(Model *_model, Tensor _input, Tensor _weight,
+                   int _strideH, int _strideW,
+                   int _outputH, int _outputW,
+                   ActiMode _activation)
+{
+  printf("Initializing with outputH = %d, outputW = %d\n", _outputH, _outputW);
   assert(_input.numDim == 4);
   assert(_weight.numDim == 4);
   //assert(_input.dim[1] == _weight.dim[1]);
@@ -160,6 +241,42 @@ Conv2D::Conv2D(Model* _model, Tensor _input, Tensor _weight,
   assert(_weight.dim[0] % groups == 0);
   //printf("k(%d %d) pad(%d %d) stride(%d %d)\n",
   //       kernelH, kernelW, padH, padW, strideH, strideW);
+  strideH = _strideH;
+  strideW = _strideW;
+  activation = _activation;
+  //int outputH = 1 + (inputH + 2 * padH - kernelH) / strideH;
+  //int outputW = 1 + (inputW + 2 * padW - kernelW) / strideW;
+  // Set dims and strides
+  numOutputs = 1;
+  outputs[0].numDim = 4;
+  outputs[0].dim[0] = _input.dim[0];
+  outputs[0].dim[1] = _weight.dim[0];
+  outputs[0].dim[2] = _outputH;
+  outputs[0].dim[3] = _outputW;
+  outputs[0].stride[3] = 1;
+  outputs[0].stride[2] = outputs[0].stride[3] * outputs[0].dim[3];
+  outputs[0].stride[1] = outputs[0].stride[2] * outputs[0].dim[2];
+  outputs[0].stride[0] = outputs[0].stride[1] * outputs[0].dim[1];
+  // Set SplitInfo
+  outputs[0].split[0] = _input.split[0];
+  outputs[0].split[1] = _weight.split[0];
+  outputs[0].split[2] = _input.split[2];
+  outputs[0].split[3] = _input.split[3];
+  // Assume we cannot split the H and W dimension,
+  // otherwise we need to extend Conv2DKey to include their SplitInfo
+  assert(outputs[0].split[2] == SplitInfo::NO_SPLIT);
+  assert(outputs[0].split[3] == SplitInfo::NO_SPLIT);
+  outputs[0].idx = 0;
+
+}
+
+Conv2D::Conv2D(Model* _model, Tensor _input, Tensor _weight,
+               int _strideH, int _strideW,
+               PaddingMode _padding,
+               ActiMode _activation)
+: OpBase(_input, _weight, _model, OP_CONV2D),
+  padding(_padding), usePaddingMode(true)
+{
   int inputH = _input.dim[2];
   int inputW = _input.dim[3];
   int kernelH = _weight.dim[2];
@@ -178,29 +295,26 @@ Conv2D::Conv2D(Model* _model, Tensor _input, Tensor _weight,
     default:
       assert(false);
   }
-  //int outputH = 1 + (inputH + 2 * padH - kernelH) / strideH;
-  //int outputW = 1 + (inputW + 2 * padW - kernelW) / strideW;
-  // Set dims and strides
-  numOutputs = 1;
-  outputs[0].numDim = 4;
-  outputs[0].dim[0] = _input.dim[0];
-  outputs[0].dim[1] = _weight.dim[0];
-  outputs[0].dim[2] = outputH;
-  outputs[0].dim[3] = outputW;
-  outputs[0].stride[3] = 1;
-  outputs[0].stride[2] = outputs[0].stride[3] * outputs[0].dim[3];
-  outputs[0].stride[1] = outputs[0].stride[2] * outputs[0].dim[2];
-  outputs[0].stride[0] = outputs[0].stride[1] * outputs[0].dim[1];
-  // Set SplitInfo
-  outputs[0].split[0] = _input.split[0];
-  outputs[0].split[1] = _weight.split[0];
-  outputs[0].split[2] = _input.split[2];
-  outputs[0].split[3] = _input.split[3];
-  // Assume we cannot split the H and W dimension,
-  // otherwise we need to extend Conv2DKey to include their SplitInfo
-  assert(outputs[0].split[2] == SplitInfo::NO_SPLIT);
-  assert(outputs[0].split[3] == SplitInfo::NO_SPLIT);
-  outputs[0].idx = 0;
+  printf("Padding mode\n");
+  this->initialize(_model, _input, _weight, _strideH, _strideW, outputH, outputW, _activation);
+}
+
+Conv2D::Conv2D(Model *_model, Tensor _input, Tensor _weight,
+               int _strideH, int _strideW,
+               int _padH, int _padW,
+               ActiMode _activation)
+: OpBase(_input, _weight, _model, OP_CONV2D),
+  padH(_padH), padW(_padW), usePaddingMode(false)
+{
+  int inputH = _input.dim[2];
+  int inputW = _input.dim[3];
+  int kernelH = _weight.dim[2];
+  int kernelW = _weight.dim[3];
+  int outputH = (inputH - kernelH + 2 * _padH) / _strideH + 1;
+  int outputW = (inputW - kernelW + 2 * _padW) / _strideW + 1;
+  printf("(%d - %d + 2 * %d) / %d + 1 == %d\n", inputH, kernelH, _padH, _strideH, outputH);
+  printf("No padding mode\n");
+  this->initialize(_model, _input, _weight, _strideH, _strideW, outputH, outputW, _activation);
 }
 
 Conv2D::~Conv2D(void)
@@ -235,7 +349,17 @@ bool Conv2D::get_int_parameter(PMParameter para, int* value)
     case PM_ACTI:
       *value = (int) activation;
       return true;
+    case PM_PAD_H:
+      *value = (int) padH;
+      return true;
+    case PM_PAD_W:
+      *value = (int) padW;
+      return true;
+    case PM_USE_PADDING_MODE:
+      *value = (int) usePaddingMode;
+      return true;
     default:
+      printf("Could not find parameter for value %d\n", value);
       return OpBase::get_int_parameter(para, value);
   }
 }
@@ -246,27 +370,32 @@ void Conv2D::get_padding(int* padH, int* padW) {
   int kernelH = inputs[1].dim[2];
   int kernelW = inputs[1].dim[3];
   // Reference: https://www.tensorflow.org/api_guides/python/nn#Convolution
-  switch (padding) {
-    case PD_MODE_SAME:
-      int totalPadH, totalPadW;
-      if (inputH % strideH == 0)
-        totalPadH = max(kernelH - strideH, 0);
-      else
-        totalPadH = max(kernelH - (inputH % strideH), 0);
-      if (inputW % strideW == 0)
-        totalPadW = max(kernelW - strideW, 0);
-      else
-        totalPadW = max(kernelW - (inputW % strideW), 0);
-      // assert same padding on both sides
-      *padH = (totalPadH + 1) / 2;
-      *padW = (totalPadW + 1) / 2;
-      break;
-    case PD_MODE_VALID:
-      *padH = 0;
-      *padW = 0;
-      break;
-    default:
-      assert(false);
+  if (usePaddingMode) {
+    switch (padding) {
+      case PD_MODE_SAME:
+        int totalPadH, totalPadW;
+        if (inputH % strideH == 0)
+          totalPadH = max(kernelH - strideH, 0);
+        else
+          totalPadH = max(kernelH - (inputH % strideH), 0);
+        if (inputW % strideW == 0)
+          totalPadW = max(kernelW - strideW, 0);
+        else
+          totalPadW = max(kernelW - (inputW % strideW), 0);
+        // assert same padding on both sides
+        *padH = (totalPadH + 1) / 2;
+        *padW = (totalPadW + 1) / 2;
+        break;
+      case PD_MODE_VALID:
+        *padH = 0;
+        *padW = 0;
+        break;
+      default:
+        assert(false);
+    }
+  } else {
+    *padH = this->padH;
+    *padW = this->padW;
   }
 }
 
@@ -297,7 +426,7 @@ void Conv2D::collect_costs(float& exe_time, float& flops,
 //           input.split[0], weight.split[0])
 Conv2DKey::Conv2DKey(Tensor _input, Tensor _weight,
                      int _strideH, int _strideW,
-                     PaddingMode _padding,
+                     Conv2DPadding _padding,
                      ActiMode _activation)
 {
   assert(_input.dim[1] % _weight.dim[1] == 0);
@@ -306,7 +435,14 @@ Conv2DKey::Conv2DKey(Tensor _input, Tensor _weight,
   int idx = 0;
   keys[idx++] = _strideH;
   keys[idx++] = _strideW;
-  keys[idx++] = _padding;
+  keys[idx++] = _padding.usePaddingMode;
+  if (_padding.usePaddingMode) {
+    keys[idx++] = _padding.paddingMode;
+    keys[idx++] = 0;
+  } else {
+    keys[idx++] = _padding.padding.padH;
+    keys[idx++] = _padding.padding.padW;
+  }
   keys[idx++] = _activation;
   _input.serialize(keys, idx);
   _weight.serialize(keys, idx);

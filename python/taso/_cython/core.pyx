@@ -224,9 +224,14 @@ cdef class PyGraph:
 
     def conv2d(self, *, PyTensor input, PyTensor weight, strides, padding, activation = "NONE"):
         assert (type(input) == PyTensor)
-        padding = get_padding_mode(padding)
         activation = get_activation_mode(activation)
-        cdef TensorHandle handle = self.p_graph.conv2d(input.ctensor, weight.ctensor, strides[0], strides[1], padding, activation)
+        cdef TensorHandle handle
+        if type(padding) is tuple:
+            padH, padW = padding
+            handle = self.p_graph.conv2d(input.ctensor, weight.ctensor, strides[0], strides[1], padH, padW, activation)
+        else:
+            padding = get_padding_mode(padding)
+            handle = self.p_graph.conv2d(input.ctensor, weight.ctensor, strides[0], strides[1], padding, activation)
         t = ctypes.cast(<unsigned long long>handle, ctypes.c_void_p)
         return PyTensor(t)
 
@@ -630,32 +635,41 @@ cdef class PyGraph:
             sw = self.p_graph.get_operator_int_attr(op.guid, PM_STRIDE_W)
             return [sh, sw]
         elif attrname == 'pads':
-            pm = <PaddingMode>self.p_graph.get_operator_int_attr(op.guid, PM_PAD)
-            if pm == PD_MODE_VALID:
-                return [0, 0, 0, 0]
-            assert pm == PD_MODE_SAME
-            dims = self.get_input_dims(op, 0)
-            assert len(dims) == 4, "input tensor must be 4 dim for pads attribute"
-            kh = self.p_graph.get_operator_int_attr(op.guid, PM_KERNEL_H)
-            kw = self.p_graph.get_operator_int_attr(op.guid, PM_KERNEL_W)
-            sh = self.p_graph.get_operator_int_attr(op.guid, PM_STRIDE_H)
-            sw = self.p_graph.get_operator_int_attr(op.guid, PM_STRIDE_W)
-            inputH = dims[2]
-            inputW = dims[3]
-            if inputH % sh == 0:
-                padH = max(kh - sh, 0)
+            usePaddingMode = self.p_graph.get_operator_int_attr(op.guid, PM_USE_PADDING_MODE)
+            if usePaddingMode:
+                pm = <PaddingMode>self.p_graph.get_operator_int_attr(op.guid, PM_PAD)
+                if pm == PD_MODE_VALID:
+                    return [0, 0, 0, 0]
+                assert pm == PD_MODE_SAME
+                dims = self.get_input_dims(op, 0)
+                assert len(dims) == 4, "input tensor must be 4 dim for pads attribute"
+                kh = self.p_graph.get_operator_int_attr(op.guid, PM_KERNEL_H)
+                kw = self.p_graph.get_operator_int_attr(op.guid, PM_KERNEL_W)
+                sh = self.p_graph.get_operator_int_attr(op.guid, PM_STRIDE_H)
+                sw = self.p_graph.get_operator_int_attr(op.guid, PM_STRIDE_W)
+                inputH = dims[2]
+                inputW = dims[3]
+                if inputH % sh == 0:
+                    padH = max(kh - sh, 0)
+                else:
+                    padH = max(kh - (inputH % sh), 0)
+                if inputW % sw == 0:
+                    padW = max(kw - sw, 0)
+                else:
+                    padW = max(kw - (inputW % sw), 0)
+                # Ensure padding is same on both sides
+                if padH % 2 == 1:
+                    padH += 1
+                if padW % 2 == 1:
+                    padW += 1
+                return [padH // 2, padW // 2, padH - padH // 2, padW - padW // 2]
             else:
-                padH = max(kh - (inputH % sh), 0)
-            if inputW % sw == 0:
-                padW = max(kw - sw, 0)
-            else:
-                padW = max(kw - (inputW % sw), 0)
-            # Ensure padding is same on both sides
-            if padH % 2 == 1:
-                padH += 1
-            if padW % 2 == 1:
-                padW += 1
-            return [padH // 2, padW // 2, padH - padH // 2, padW - padW // 2]
+                print("Getting padding")
+                padH = self.p_graph.get_operator_int_attr(op.guid, PM_PAD_H)
+                print("padH")
+                padW = self.p_graph.get_operator_int_attr(op.guid, PM_PAD_W)
+                print("padW")
+                return [padH, padW, padH, padW]
         elif attrname == 'group':
             return self.p_graph.get_operator_int_attr(op.guid, PM_GROUP)
         elif attrname == 'axis':

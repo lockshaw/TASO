@@ -108,6 +108,9 @@ cdef extern from "taso/ops.h" namespace "taso":
         PM_KERNEL_W
         PM_STRIDE_H
         PM_STRIDE_W
+        PM_USE_PADDING_MODE
+        PM_PAD_H
+        PM_PAD_W
         PM_PAD
         PM_ACTI
         PM_NUMDIM
@@ -188,6 +191,11 @@ cdef extern from "taso/ops.h" namespace "taso":
                             const TensorHandle weight,
                             int strideH, int strideW,
                             PaddingMode _padding,
+                            ActiMode _activation)
+        TensorHandle conv2d(const TensorHandle input,
+                            const TensorHandle weight,
+                            int strideH, int strideW,
+                            int padH, int padW,
                             ActiMode _activation)
         TensorHandle dropout(const TensorHandle input)
         TensorHandle element(OpType type,
