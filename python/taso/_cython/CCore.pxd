@@ -285,3 +285,4 @@ cdef extern from "taso/ops.h" namespace "taso":
         float total_cost()
         float run()
         size_t hash()
+        void export_to_file(string file_name)

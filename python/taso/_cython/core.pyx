@@ -560,6 +560,10 @@ cdef class PyGraph:
             inc(it)
         return graphs
 
+    def export_to_file(self, bytes file_name):
+        cdef string s = string(file_name)
+        self.p_graph.export_to_file(s)
+
     def hash(self):
         return self.p_graph.hash()
 
