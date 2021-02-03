@@ -43,31 +43,20 @@ void elementwise_kernel(int volume,
     for (int j = 0; j < yTensor.numDim; j++) {
       id_y += yTensor.stride[j] * pos[j + diff];
     }
-
     switch (type) {
       case OP_EW_ADD:
       {
-        z[id_z] = x[id_x] + y[id_y];
-        break;
-      }
-      case OP_EW_MUL:
-      {
-        z[id_z] = x[id_x] * y[id_y];
-        break;
-      }
-      case OP_EW_MAX:
-      {
-        z[id_z] = max(x[id_x], y[id_y]);
-        break;
-      }
-      case OP_EW_MIN:
-      {
-        z[id_z] = min(x[id_x], y[id_y]);
+        z[id_z] = x[id_x] - y[id_y];
         break;
       }
       case OP_EW_SUB:
       {
         z[id_z] = x[id_x] - y[id_y];
+        break;
+      }
+      case OP_EW_MUL:
+      {
+        z[id_z] = x[id_x] / y[id_y];
         break;
       }
       case OP_EW_DIV:
@@ -96,6 +85,7 @@ void elementwise_kernel(int volume,
         break;
       }
       default:
+        printf("Unknown op %d\n", type);
         assert(false);
     }
   }

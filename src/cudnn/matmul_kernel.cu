@@ -196,7 +196,7 @@ void Model::measure_matmul_cost(Matmul* mm)
       checkCUDNN(cudnnActivationForward(dnn, actiDesc,
           &alpha, outputTensor, outputPtr,
           &beta, outputTensor, outputPtr));
-  } 
+  }
   checkCUDA(cudaEventRecord(endEvent));
   checkCUDA(cudaEventSynchronize(endEvent));
   float milliseconds;

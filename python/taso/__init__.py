@@ -906,6 +906,11 @@ def export_onnx(graph):
         inputs = list()
         for e in inedges:
             intype = graph.get_operator_type(e['srcOp'])
+            if intype == 'Weight' and mytype == 'MatMul':
+                mytype = 'Gemm'
+                break
+        for e in inedges:
+            intype = graph.get_operator_type(e['srcOp'])
             tensor_name = _input_tensor_name(graph, e, op)
             inputs.append(tensor_name)
             output_guids.pop((e['srcOp']['guid'], e['srcIdx']), None)
