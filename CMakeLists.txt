@@ -36,11 +36,14 @@ message("Protobuf cpps=" ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_SRCS
   src/core/*.cc
+  src/flexflow/runtime/*.cc
+  src/flexflow/ops/element_binary.cu
   )
 list(APPEND TASO_SRCS ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_CUDA_SRCS
   src/cudnn/*.cu
+  src/flexflow/ops/element_binary.cu
   )
 
 file(GLOB_RECURSE TASO_DNNL_SRCS
