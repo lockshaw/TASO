@@ -257,12 +257,6 @@ namespace flexflow {
                   const Tensor& x,
                   const Tensor& y,
                   const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    //Parameter* get_parameter(int index) {assert(0); return NULL;}
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
 
     bool measure_compute_time(Simulator* sim,
                               const ParallelConfig& pc,
@@ -278,9 +272,6 @@ namespace flexflow {
                          const float* in2_ptr,
                          float* in1_grad_ptr,
                          float* in2_grad_ptr);
-  private:
-    template<int NDIM>
-    void create_output_and_partition_with_dim(FFModel& model);
   public:
     //IndexSpace task_is;
     OperatorType op_type;
@@ -301,12 +292,6 @@ namespace flexflow {
                  OperatorType type,
                  const Tensor& x,
                  const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    //Parameter* get_parameter(int index) {assert(0); return NULL;}
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
     static void forward_kernel(const ElementUnaryMeta* m,
                         const float* in_ptr,
                         float* out_ptr,
@@ -322,9 +307,6 @@ namespace flexflow {
                               float& forward_time,
                               float& backward_time);
     static bool use_cudnn(OperatorType type);
-  private:
-    template<int NDIM>
-    void create_output_and_partition_with_dim(FFModel& model);
   };
 
   class Conv2DMeta : public OpMeta {
@@ -354,12 +336,8 @@ namespace flexflow {
            const Op* shared_op,
            const char* name);
     void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
     //void update(const FFModel&);
     //Parameter* get_parameter(int index);
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
 
     static void forward_kernel(const Conv2DMeta* m,
                         const float* input_ptr,
@@ -393,14 +371,6 @@ namespace flexflow {
            int paddingH, int paddingW,
            PoolType type, ActiMode _activation,
            const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    void update(const FFModel&);
-    //Parameter* get_parameter(int index) {assert(0); return NULL;}
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
-
     static void forward_kernel(const Pool2DMeta* m,
                                const float* input_ptr,
                                float* output_ptr);
@@ -447,13 +417,6 @@ namespace flexflow {
            bool use_bias,
            const Op* shared_op,
            const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    //void update(const FFModel&);
-    //Parameter* get_parameter(int index);
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
 
     static void forward_kernel(const LinearMeta* m,
                         const float* input_ptr,
@@ -474,18 +437,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
-    ParallelConfig get_random_parallel_config(const FFModel& ff) const;
-  private:
-    template<int NDIM>
-    void create_output_and_partition_with_dim(FFModel& model);
-    template<int NDIM>
-    void create_weights_with_dim(FFModel& model);
-    template<int NDIM>
-    void init_with_dim(const FFModel& ff);
-    template<int NDIM>
-    void forward_with_dim(const FFModel& ff);
-    template<int NDIM>
-    void backward_with_dim(const FFModel& ff);
+    ParallelConfig get_random_parallel_config(const FFModel& ff) const override;
   public:
     int in_channels, out_channels;
     //Tensor replica;
@@ -506,13 +458,6 @@ namespace flexflow {
            const Tensor* inputs,
            int axis,
            const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    //void update(const FFModel&);
-    //Parameter* get_parameter(int index) {assert(0); return NULL;}
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
 
     void init_meta(ConcatMeta *meta) const;
     static void forward_kernel(float* output,
@@ -543,13 +488,6 @@ namespace flexflow {
           const std::vector<int>& split,
           int axis,
           const char* name);
-    void init(const FFModel&);
-    void forward(const FFModel&);
-    void backward(const FFModel&);
-    //void update(const FFModel&);
-    //Parameter* get_parameter(int index) {assert(0); return NULL;}
-    void create_weights(FFModel& model);
-    void create_output_and_partition(FFModel& model);
 
     static void forward_kernel(float **out_ptrs,
                                float const *in_ptr,
@@ -561,13 +499,34 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
-  private:
-    template<int NDIM>
-    void create_output_and_partition_with_dim(FFModel& model);
   public:
     int axis;
-    //IndexSpace task_is;
     bool profiling;
+  };
+
+  class Flat : public Op {
+  public:
+    Flat(FFModel& model,
+         const Tensor& input,
+         const char* name);
+
+    static void forward_kernel(const float* input_ptr,
+                               float* output_ptr,
+                               size_t num_elements);
+    static void backward_kernel(float* input_grad_ptr,
+                                const float* output_grad_ptr,
+                                size_t num_elements);
+    bool measure_compute_time(Simulator* sim,
+                              const ParallelConfig& pc,
+                              float& forward_time,
+                              float& backward_time);
+
+    Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
+  };
+
+  class FlatMeta : public OpMeta {
+  public:
+    FlatMeta(FFHandler handle) : OpMeta(handle) {};
   };
 }
 

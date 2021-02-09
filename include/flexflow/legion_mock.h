@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include <set>
+#include <iostream>
 
 #define MAX_TENSOR_DIM 4
 #define LEGION_MAX_DIM 4
@@ -22,11 +23,15 @@ namespace Legion {
 
     bool operator==(Domain const &other) const;
 
+    int get_dim() const;
+    coord_t const *get_lo() const;
+    coord_t const *get_hi() const;
     size_t get_volume() const;
     Domain intersection(Domain const &other) const;
   public:
     int dim;
     coord_t rect_data[2*MAX_RECT_DIM];
+    coord_t *lo, *hi;
   };
 }
 

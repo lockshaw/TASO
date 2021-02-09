@@ -17,6 +17,8 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
+using namespace flexflow;
+
 void Op::inner_measure_compute_time(Simulator *sim,
                                     std::function<void()> const &forward,
                                     std::function<void()> const &backward,

@@ -15,8 +15,6 @@
 
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
-#include "realm/runtime_impl.h"
-#include "realm/cuda/cuda_module.h"
 #include "flexflow/cuda_helper.h"
 
 typedef long long int coord_t;

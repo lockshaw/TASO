@@ -20,6 +20,18 @@ bool Domain::operator==(Domain const &other) const {
   return true;
 }
 
+int Domain::get_dim() const {
+  return this->dim;
+}
+
+coord_t const *Domain::get_lo() const {
+  return this->rect_data;
+}
+
+coord_t const *Domain::get_hi() const {
+  return this->rect_data + MAX_RECT_DIM;
+}
+
 size_t Domain::get_volume() const {
   size_t volume = 1;
 
@@ -30,7 +42,7 @@ size_t Domain::get_volume() const {
     if (hi <= lo) {
       return 0;
     }
-    volume *= (hi - lo);
+    volume *= (hi - lo + 1);
   }
 
   return volume;
