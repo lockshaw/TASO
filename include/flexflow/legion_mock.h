@@ -13,7 +13,7 @@
 
 namespace Legion {
   using MappingTagID = size_t;
-  using coord_t = long long;
+  using coord_t = long long int;
 
   class Domain {
   public:

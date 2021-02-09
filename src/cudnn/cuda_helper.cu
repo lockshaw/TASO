@@ -1,4 +1,5 @@
 #include "taso/cuda_helper.h"
+
 using namespace taso;
 
 __global__
@@ -94,7 +95,7 @@ void helperSetBroadcastableTensorDescriptor(const Tensor& input,
   //  printf("dims[%d] = %d input.dim(%d) output.dim(%d)\n", i, dims[i], input.dim[i], output.dim[i]);
   //for (int i = 0; i < num_dim; i++)
   //  printf("strides[%d] = %d input.stride(%d) output.stride(%d)\n", i, strides[i], input.stride[i], output.stride[i]);
- 
+
   checkCUDNN(cudnnSetTensorNdDescriptor(tensorDesc, CUDNN_DATA_FLOAT,
       num_dim, dims, strides));
 }

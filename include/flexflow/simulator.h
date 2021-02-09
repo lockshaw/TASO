@@ -28,12 +28,7 @@ namespace flexflow {
   class Pool2DMeta;
   class ElementUnaryMeta;
   class ElementBinaryMeta;
-  class SoftmaxMeta;
-  class BatchMatmulMeta;
-  class BatchNormMeta;
   class ConcatMeta;
-  class DropoutMeta;
-  class TransposeMeta;
   class Op;
   class FFModel;
 
@@ -157,7 +152,6 @@ namespace flexflow {
   public:
     Simulator(const FFModel* model,
               FFHandler handler);
-    ~Simulator(void);
     void free_all();
     void* allocate(size_t num_elements, DataType type);
     Device* get_compute_device_by_id(int device_id);
@@ -196,12 +190,7 @@ namespace flexflow {
     Pool2DMeta* pool2d_meta;
     ElementUnaryMeta* ele_unary_meta;
     ElementBinaryMeta* ele_binary_meta;
-    SoftmaxMeta *softmax_meta;
-    BatchMatmulMeta *batch_matmul_meta;
-    BatchNormMeta *batch_norm_meta;
     ConcatMeta *concat_meta;
-    DropoutMeta *dropout_meta;
-    TransposeMeta *transpose_meta;
   };
 }
 
