@@ -14,7 +14,6 @@
  */
 
 #include "taso/substitution.h"
-using namespace taso;
 
 GraphXfer* create_avg_pool_conv(Model* model)
 {
@@ -1216,135 +1215,142 @@ bool GraphXfer::create_new_operator(const OpX* opx, Op& op)
       assert(opx->inputs.size() == 2);
       Tensor input = opx->inputs[0].to_tensor(this);
       Tensor weight = opx->inputs[1].to_tensor(this);
-      int strideH, strideW, padding, activation;
+      int strideH, strideW, padding, activation, groups;
       assert(opx->get_pm_constraint(PM_STRIDE_H, strideH));
       assert(opx->get_pm_constraint(PM_STRIDE_W, strideW));
       assert(opx->get_pm_constraint(PM_PAD, padding));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_conv2d(input, weight, strideH, strideW,
-                                       (PaddingMode)padding,
-                                       (ActiMode)activation);
+      assert(opx->get_pm_constraint(PM_GROUP, groups));
+      op = model->conv2d(
+        input,
+        weight.adim[1] * groups,
+        weight.adim[0], weight.adim[1],
+        strideH, strideW,
+        (PaddingMode)padding,
+        groups,
+        (ActiMode)activation
+      );
       break;
     }
-    case OP_EW_ADD:
-    case OP_EW_MUL:
-    {
-      assert(opx->inputs.size() == 2);
-      Tensor input0 = opx->inputs[0].to_tensor(this);
-      Tensor input1 = opx->inputs[1].to_tensor(this);
-      op = model->get_or_create_element(opx->type, input0, input1);
-      break;
-    }
-    case OP_FUSE_CONV_BATCHNORM:
-    {
-      assert(opx->inputs.size() == 5);
-      Tensor conv_w = opx->inputs[0].to_tensor(this);
-      Tensor scale = opx->inputs[1].to_tensor(this);
-      Tensor bias = opx->inputs[2].to_tensor(this);
-      Tensor mean = opx->inputs[3].to_tensor(this);
-      Tensor var = opx->inputs[4].to_tensor(this);
-      op = model->get_or_create_fuse_conv_batchnorm(conv_w, scale, bias, mean, var);
-      break;
-    }
-    case OP_FUSE_CONV_BATCHNORM_BIAS:
-    {
-      assert(opx->inputs.size() == 4);
-      Tensor scale = opx->inputs[0].to_tensor(this);
-      Tensor bias = opx->inputs[1].to_tensor(this);
-      Tensor mean = opx->inputs[2].to_tensor(this);
-      Tensor var = opx->inputs[3].to_tensor(this);
-      op = model->get_or_create_fuse_conv_batchnorm_bias(scale, bias, mean, var);
-      break;
-    }
-    case OP_FUSE_CONV_BATCHNORM_ALPHA_VAR:
-    {
-      assert(opx->inputs.size() == 3);
-      Tensor conv_w = opx->inputs[0].to_tensor(this);
-      Tensor scale = opx->inputs[1].to_tensor(this);
-      Tensor var = opx->inputs[2].to_tensor(this);
-      op = model->get_or_create_fuse_conv_batchnorm_alpha_var(conv_w, scale, var);
-      break;
-    }
-    case OP_BROADCAST_ADD:
-    {
-      assert(opx->inputs.size() == 2);
-      Tensor _data = opx->inputs[0].to_tensor(this);
-      Tensor _bias = opx->inputs[1].to_tensor(this);
-      op = model->get_or_create_broadcast_add(_data, _bias);
-      break;
-    }
-    case OP_MATMUL:
-    {
-      assert(opx->inputs.size() == 2);
-      Tensor input = opx->inputs[0].to_tensor(this);
-      Tensor weight = opx->inputs[1].to_tensor(this);
-      int activation;
-      assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_matmul(input, weight,
-                                       (ActiMode)activation);
-      break;
-    }
-    case OP_TRANSPOSE:
-    {
-      assert(opx->inputs.size() == 1);
-      Tensor input = opx->inputs[0].to_tensor(this);
-      int permIdx, shuffle;
-      assert(opx->get_pm_constraint(PM_PERM, permIdx));
-      assert(opx->get_pm_constraint(PM_OUTSHUFFLE, shuffle));
-      op = model->get_or_create_transpose(input, permIdx, (bool)shuffle);
-      break;
-    }
-    case OP_ENLARGE:
-    {
-      assert(opx->inputs.size() == 2);
-      Tensor w1 = opx->inputs[0].to_tensor(this);
-      Tensor w2 = opx->inputs[1].to_tensor(this);
-      //int kernelH, kernelW;
-      //assert(opx->get_pm_constraint(PM_KERNEL_H, kernelH));
-      //assert(opx->get_pm_constraint(PM_KERNEL_W, kernelW));
-      op = model->get_or_create_enlarge(w1, w2);
-      break;
-    }
-    case OP_MERGE_GCONV:
-    {
-      assert(opx->inputs.size() == 1);
-      Tensor weight = opx->inputs[0].to_tensor(this);
-      int count;
-      assert(opx->get_pm_constraint(PM_MERGE_GCONV_COUNT, count));
-      op = model->get_or_create_merge_gconv(weight, count);
-      break;
-    }
-    case OP_CONCAT:
-    {
-      // TODO: assume don't need copy for now
-      Tensor inputs[MAX_NUM_INPUTS];
-      bool needCopy[MAX_NUM_INPUTS];
-      for (size_t i = 0; i < opx->inputs.size(); i++) {
-        inputs[i] = opx->inputs[i].to_tensor(this);
-        needCopy[i] = false;
-      }
-      int axis;
-      assert(opx->get_pm_constraint(PM_AXIS, axis));
-      op = model->get_or_create_concat(axis, opx->inputs.size(), inputs, needCopy);
-      break;
-    }
-    case OP_SPLIT:
-    {
-      int axis;
-      Tensor input = opx->inputs[0].to_tensor(this);
-      assert(opx->get_pm_constraint(PM_AXIS, axis));
-      op = model->get_or_create_split(input, axis, opx->outputs.size());
-      break;
-    }
-    case OP_RELU:
-    case OP_TANH:
-    case OP_SIGMOID:
-    {
-      assert(opx->inputs.size() == 1);
-      Tensor input = opx->inputs[0].to_tensor(this);
-      op = model->get_or_create_activation(input, opx->type, true);
-      break;
-    }
+    /* case OP_EW_ADD: */
+    /* case OP_EW_MUL: */
+    /* { */
+    /*   assert(opx->inputs.size() == 2); */
+    /*   Tensor input0 = opx->inputs[0].to_tensor(this); */
+    /*   Tensor input1 = opx->inputs[1].to_tensor(this); */
+    /*   op = model->get_or_create_element(opx->type, input0, input1); */
+    /*   break; */
+    /* } */
+    /* case OP_FUSE_CONV_BATCHNORM: */
+    /* { */
+    /*   assert(opx->inputs.size() == 5); */
+    /*   Tensor conv_w = opx->inputs[0].to_tensor(this); */
+    /*   Tensor scale = opx->inputs[1].to_tensor(this); */
+    /*   Tensor bias = opx->inputs[2].to_tensor(this); */
+    /*   Tensor mean = opx->inputs[3].to_tensor(this); */
+    /*   Tensor var = opx->inputs[4].to_tensor(this); */
+    /*   op = model->get_or_create_fuse_conv_batchnorm(conv_w, scale, bias, mean, var); */
+    /*   break; */
+    /* } */
+    /* case OP_FUSE_CONV_BATCHNORM_BIAS: */
+    /* { */
+    /*   assert(opx->inputs.size() == 4); */
+    /*   Tensor scale = opx->inputs[0].to_tensor(this); */
+    /*   Tensor bias = opx->inputs[1].to_tensor(this); */
+    /*   Tensor mean = opx->inputs[2].to_tensor(this); */
+    /*   Tensor var = opx->inputs[3].to_tensor(this); */
+    /*   op = model->get_or_create_fuse_conv_batchnorm_bias(scale, bias, mean, var); */
+    /*   break; */
+    /* } */
+    /* case OP_FUSE_CONV_BATCHNORM_ALPHA_VAR: */
+    /* { */
+    /*   assert(opx->inputs.size() == 3); */
+    /*   Tensor conv_w = opx->inputs[0].to_tensor(this); */
+    /*   Tensor scale = opx->inputs[1].to_tensor(this); */
+    /*   Tensor var = opx->inputs[2].to_tensor(this); */
+    /*   op = model->get_or_create_fuse_conv_batchnorm_alpha_var(conv_w, scale, var); */
+    /*   break; */
+    /* } */
+    /* case OP_BROADCAST_ADD: */
+    /* { */
+    /*   assert(opx->inputs.size() == 2); */
+    /*   Tensor _data = opx->inputs[0].to_tensor(this); */
+    /*   Tensor _bias = opx->inputs[1].to_tensor(this); */
+    /*   op = model->get_or_create_broadcast_add(_data, _bias); */
+    /*   break; */
+    /* } */
+    /* case OP_MATMUL: */
+    /* { */
+    /*   assert(opx->inputs.size() == 2); */
+    /*   Tensor input = opx->inputs[0].to_tensor(this); */
+    /*   Tensor weight = opx->inputs[1].to_tensor(this); */
+    /*   int activation; */
+    /*   assert(opx->get_pm_constraint(PM_ACTI, activation)); */
+    /*   op = model->get_or_create_matmul(input, weight, */
+    /*                                    (ActiMode)activation); */
+    /*   break; */
+    /* } */
+    /* case OP_TRANSPOSE: */
+    /* { */
+    /*   assert(opx->inputs.size() == 1); */
+    /*   Tensor input = opx->inputs[0].to_tensor(this); */
+    /*   int permIdx, shuffle; */
+    /*   assert(opx->get_pm_constraint(PM_PERM, permIdx)); */
+    /*   assert(opx->get_pm_constraint(PM_OUTSHUFFLE, shuffle)); */
+    /*   op = model->get_or_create_transpose(input, permIdx, (bool)shuffle); */
+    /*   break; */
+    /* } */
+    /* case OP_ENLARGE: */
+    /* { */
+    /*   assert(opx->inputs.size() == 2); */
+    /*   Tensor w1 = opx->inputs[0].to_tensor(this); */
+    /*   Tensor w2 = opx->inputs[1].to_tensor(this); */
+    /*   //int kernelH, kernelW; */
+    /*   //assert(opx->get_pm_constraint(PM_KERNEL_H, kernelH)); */
+    /*   //assert(opx->get_pm_constraint(PM_KERNEL_W, kernelW)); */
+    /*   op = model->get_or_create_enlarge(w1, w2); */
+    /*   break; */
+    /* } */
+    /* case OP_MERGE_GCONV: */
+    /* { */
+    /*   assert(opx->inputs.size() == 1); */
+    /*   Tensor weight = opx->inputs[0].to_tensor(this); */
+    /*   int count; */
+    /*   assert(opx->get_pm_constraint(PM_MERGE_GCONV_COUNT, count)); */
+    /*   op = model->get_or_create_merge_gconv(weight, count); */
+    /*   break; */
+    /* } */
+    /* case OP_CONCAT: */
+    /* { */
+    /*   // TODO: assume don't need copy for now */
+    /*   Tensor inputs[MAX_NUM_INPUTS]; */
+    /*   bool needCopy[MAX_NUM_INPUTS]; */
+    /*   for (size_t i = 0; i < opx->inputs.size(); i++) { */
+    /*     inputs[i] = opx->inputs[i].to_tensor(this); */
+    /*     needCopy[i] = false; */
+    /*   } */
+    /*   int axis; */
+    /*   assert(opx->get_pm_constraint(PM_AXIS, axis)); */
+    /*   op = model->get_or_create_concat(axis, opx->inputs.size(), inputs, needCopy); */
+    /*   break; */
+    /* } */
+    /* case OP_SPLIT: */
+    /* { */
+    /*   int axis; */
+    /*   Tensor input = opx->inputs[0].to_tensor(this); */
+    /*   assert(opx->get_pm_constraint(PM_AXIS, axis)); */
+    /*   op = model->get_or_create_split(input, axis, opx->outputs.size()); */
+    /*   break; */
+    /* } */
+    /* case OP_RELU: */
+    /* case OP_TANH: */
+    /* case OP_SIGMOID: */
+    /* { */
+    /*   assert(opx->inputs.size() == 1); */
+    /*   Tensor input = opx->inputs[0].to_tensor(this); */
+    /*   op = model->get_or_create_activation(input, opx->type, true); */
+    /*   break; */
+    /* } */
     default:
     {
       printf("opx->type = %d\n", opx->type);

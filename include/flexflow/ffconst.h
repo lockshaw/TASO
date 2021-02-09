@@ -1,11 +1,12 @@
 #ifndef _FLEXFLOW_CONST_H_
 #define _FLEXFLOW_CONST_H_
 
+//That this must be consistent with python/taso/_cython/CCore.pxd
 enum ActiMode {
-  AC_MODE_NONE = 10,
-  AC_MODE_RELU = 11,
-  AC_MODE_SIGMOID = 12,
-  AC_MODE_TANH = 13,
+  AC_MODE_NONE,
+  AC_MODE_SIGMOID,
+  AC_MODE_RELU,
+  AC_MODE_TANH,
 };
 
 enum AggrMode {
@@ -20,11 +21,14 @@ enum PoolType {
 };
 
 enum DataType {
-  DT_FLOAT = 40,
-  DT_DOUBLE = 41,
-  DT_INT32 = 42,
-  DT_INT64 = 43,
-  DT_BOOLEAN = 44,
+  DT_FLOAT = 111,
+  DT_DOUBLE = 222,
+  DT_HALF = 333,
+  DT_INT8 = 444,
+  DT_UINT8 = 555,
+  DT_INT32 = 666,
+  DT_INT64 = 777,
+  DT_BOOL = 888,
 };
 
 enum LossType {
@@ -43,10 +47,8 @@ enum MetricsType {
   METRICS_MEAN_ABSOLUTE_ERROR = 1032,
 };
 
-
-// This is consistent with TASO's OpType
-// https://github.com/jiazhihao/TASO/blob/master/include/taso/ops.h#L75-L138
-enum OperatorType {
+//This must be consistent with python/taso/_cython/CCore.pxd
+enum OpType {
   OP_INPUT,
   OP_WEIGHT,
   OP_ANY,
@@ -55,6 +57,8 @@ enum OperatorType {
   OP_LINEAR,
   OP_BATCHMATMUL,
   OP_POOL2D,
+  OP_POOL2D_MAX,
+  OP_POOL2D_AVG,
   OP_RELU,
   OP_SIGMOID,
   OP_TANH,
@@ -112,7 +116,71 @@ enum OperatorType {
   OP_RESIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
   OP_PRELU, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
   OP_MULTIHEAD_ATTENTION,
-  OP_FUSED, // Fused operator type for internal fusion optimizations
+  OP_FUSE_CONV_BATCHNORM,
+  OP_FUSE_CONV_BATCHNORM_ALPHA_VAR,
+  OP_FUSE_CONV_BATCHNORM_BIAS,
+  OP_BROADCAST_ADD,
 };
+using OperatorType = OpType;
+
+//That this must be consistent with python/taso/_cython/CCore.pxd
+enum PaddingMode {
+  PD_MODE_SAME,
+  PD_MODE_VALID,
+};
+
+enum {
+  GUID_INVALID = 0,
+  GUID_INPUT = 10,
+  GUID_WEIGHT = 11,
+  GUID_PRESERVED = 19,
+};
+
+
+//This must be consistent with python/taso/_cython/CCore.pxd
+enum PMParameter {
+  PM_OP_TYPE,   	// AnyOp
+  PM_NUM_INPUTS,	// AnyOp
+  PM_NUM_OUTPUTS,	// AnyOp
+  PM_GROUP,             // Conv2D
+  PM_KERNEL_H,		// Conv2D, Pool2D
+  PM_KERNEL_W,		// Conv2D, Pool2D
+  PM_STRIDE_H,		// Conv2D, Pool2D
+  PM_STRIDE_W,		// Conv2D, Pool2D
+  PM_PAD,		// Conv2D, Pool2D
+  PM_ACTI,		// Conv2D, Pool2D
+  PM_NUMDIM,		// Concat, Transpose
+  PM_AXIS,		// Concat, Split
+  PM_PERM,		// Transpose
+  PM_OUTSHUFFLE,	// Transpose
+  PM_MERGE_GCONV_COUNT, // MergeGConv
+  PM_AXES,		// Squeeze, Unsqueeze, Reduce*
+  PM_KEEP_DIMS,         // Reduce*
+  PM_EPSILON,   // BatchNorm
+};
+
+enum TNParameter {
+  IN_0 = 100,
+  IN_1 = 101,
+  IN_2 = 102,
+  IN_3 = 103,
+  IN_4 = 104,
+  IN_5 = 105,
+  OU_0 = 200,
+  OU_1 = 201,
+  OU_2 = 202,
+  OU_3 = 203,
+  OU_4 = 204,
+  OU_5 = 205,
+};
+
+enum DIMParameter {
+  DIM_0 = 300,
+  DIM_1 = 301,
+  DIM_2 = 302,
+  DIM_3 = 303,
+  DIM_ND = 310,
+};
+
 
 #endif // _FLEXFLOW_CONST_H_

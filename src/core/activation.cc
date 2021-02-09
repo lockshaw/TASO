@@ -56,18 +56,11 @@ TensorHandle Graph::tanh(const TensorHandle _input, bool _inPlace)
   return t;
 }
 
-Op Model::get_or_create_activation(Tensor _input, OpType _type, bool _inPlace)
+Op Model::get_or_create_activation(Tensor _input, OpType _type, char const *name)
 {
   // keys are (inputN, inputC, inputH, inputW, _type, _inPlace)
-  ActivationKey key(_input, _type, _inPlace);
-  Activation* actOp;
-  if (activation.find(key) != activation.end()) {
-    actOp = activation[key];
-  } else {
-    actOp = new Activation(this, _input, _type, _inPlace);
-    measure_activation_cost(actOp);
-    activation[key] = actOp;
-  }
+  ElementUnary *ele = new ElementUnary(*this, _type, _input, name);
+  layers.push_back(ele);
   Op ret;
   ret.guid = global_unique_id ++;
   ret.ptr = actOp;
@@ -111,15 +104,15 @@ void Activation::collect_costs(float& exe_time, float& flops,
          type, runtime, exe_time);
 }
 
-// Key ordering: type, inPlace, _input
-ActivationKey::ActivationKey(Tensor _input, OpType _type, bool _inPlace)
-{
-  int idx = 0;
-  keys[idx++] = _type;
-  keys[idx++] = (int)(_inPlace);
-  _input.serialize(keys, idx);
-  while (idx < KEY_LENGTH)
-    keys[idx++] = 0;
-  assert(idx == KEY_LENGTH);
-}
+/* // Key ordering: type, inPlace, _input */
+/* ActivationKey::ActivationKey(Tensor _input, OpType _type, bool _inPlace) */
+/* { */
+/*   int idx = 0; */
+/*   keys[idx++] = _type; */
+/*   keys[idx++] = (int)(_inPlace); */
+/*   _input.serialize(keys, idx); */
+/*   while (idx < KEY_LENGTH) */
+/*     keys[idx++] = 0; */
+/*   assert(idx == KEY_LENGTH); */
+/* } */
 

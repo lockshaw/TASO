@@ -14,10 +14,11 @@
  */
 
 #include "flexflow/simulator.h"
-#include "flexflow/model.h"
+//#include "flexflow/model.h"
+#include "flexflow/config.h"
+#include "taso/ops.h"
 #include <queue>
-
-using namespace flexflow;
+#include "flexflow/dotfile.h"
 
 int ParallelConfig::num_parts() const
 {
@@ -136,7 +137,7 @@ SimTask* TaskManager::new_comm_task()
   return task;
 }
 
-SimTask* TaskManager::new_forward_task(Op* op, int idx)
+SimTask* TaskManager::new_forward_task(OpBase* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_FORWARD;
@@ -147,7 +148,7 @@ SimTask* TaskManager::new_forward_task(Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::new_backward_task(Op* op, int idx)
+SimTask* TaskManager::new_backward_task(OpBase* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_BACKWARD;
@@ -158,7 +159,7 @@ SimTask* TaskManager::new_backward_task(Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::get_forward_task(Op* op, int idx)
+SimTask* TaskManager::get_forward_task(OpBase* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -166,7 +167,7 @@ SimTask* TaskManager::get_forward_task(Op* op, int idx)
   return hash_to_forward_task[hash];
 }
 
-SimTask* TaskManager::get_backward_task(Op* op, int idx)
+SimTask* TaskManager::get_backward_task(OpBase* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -195,7 +196,7 @@ void* Simulator::allocate(size_t num_elements, DataType type)
     case DT_INT64:
       element_size = sizeof(int64_t);
       break;
-    case DT_BOOLEAN:
+    case DT_BOOL:
       element_size = sizeof(bool);
       break;
     default:
@@ -282,7 +283,7 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   }
 }
 
-float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
+float Simulator::measure_op_forward_time(OpBase* op, const ParallelConfig& config)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(config.device_type);
@@ -302,7 +303,7 @@ float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
   }
 }
 
-float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
+float Simulator::measure_op_backward_time(OpBase* op, const ParallelConfig& config)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(config.device_type);
@@ -322,20 +323,20 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
   }
 }
 
-float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<Op*, ParallelConfig>& global)
+float Simulator::simulate_runtime(const Model* model,
+                                  const std::map<OpBase*, ParallelConfig>& global)
 {
   return this->simulate_runtime(model, global, "");
 }
 
-float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<Op*, ParallelConfig>& global,
+float Simulator::simulate_runtime(const Model* model,
+                                  const std::map<OpBase*, ParallelConfig>& global,
                                   std::string const &export_file_name)
 {
   task_manager->reset();
   // Step 1: register forward and backward tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+    OpBase* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
     float forward_time = measure_op_forward_time(op, config);
     float backward_time = measure_op_backward_time(op, config);
@@ -351,11 +352,11 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   // Step 2: insert dependencies and comm. tasks before compute tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+    OpBase* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
-      Op* pre_op = t.owner_op;
+      OpBase* pre_op = t.owner_op;
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
@@ -397,7 +398,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   if (model->config.search_overlap_backward_update) {
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
-      Op* op = model->layers[l];
+      OpBase* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
@@ -439,7 +440,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       barriers.push_back(t);
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+      OpBase* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < pc.num_parts(); j++) {
         SimTask* backT = task_manager->get_backward_task(op, j);
@@ -447,7 +448,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+      OpBase* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
@@ -550,7 +551,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   assert(idx == task_manager->global_task_id);
 #ifdef FF_ENABLE_NCCL
   for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+    OpBase* op = model->layers[l];
     ParallelConfig pc = global.find(op)->second;
     // Since all NCCL calls are blocking, we can add the NCCL cost
     // sequentially

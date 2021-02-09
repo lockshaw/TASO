@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
+#include "taso/ops.h"
 #include "flexflow/cuda_helper.h"
 
-Tensor FFModel::binary(OperatorType op,
+Tensor Model::binary(OperatorType op,
                        const Tensor& in1,
                        const Tensor& in2,
                        char const *name)
@@ -26,35 +26,35 @@ Tensor FFModel::binary(OperatorType op,
   return ele->outputs[0];
 }
 
-Tensor FFModel::add(const Tensor& in1,
+Tensor Model::add(const Tensor& in1,
                     const Tensor& in2,
                     char const *name)
 {
   return this->binary(OP_EW_ADD, in1, in2, name);
 }
 
-Tensor FFModel::subtract(const Tensor& in1,
+Tensor Model::subtract(const Tensor& in1,
                          const Tensor& in2,
                          char const *name)
 {
   return this->binary(OP_EW_SUB, in1, in2, name);
 }
 
-Tensor FFModel::multiply(const Tensor& in1,
+Tensor Model::multiply(const Tensor& in1,
                          const Tensor& in2,
                          char const *name)
 {
   return this->binary(OP_EW_MUL, in1, in2, name);
 }
 
-Tensor FFModel::divide(const Tensor& in1,
+Tensor Model::divide(const Tensor& in1,
                        const Tensor& in2,
                        char const *name)
 {
   return this->binary(OP_EW_DIV, in1, in2, name);
 }
 
-ElementBinary::ElementBinary(FFModel& model,
+ElementBinary::ElementBinary(Model& model,
                              OperatorType _op_type,
                              const Tensor& in1,
                              const Tensor& in2,
@@ -85,12 +85,12 @@ ElementBinary::ElementBinary(FFModel& model,
   }
 }
 
-void ElementBinary::create_weights(FFModel& model)
+void ElementBinary::create_weights(Model& model)
 {
   // Do nothing
 }
 
-void ElementBinary::create_output_and_partition(FFModel& model)
+void ElementBinary::create_output_and_partition(Model& model)
 {
   //TODO: implement broadcast op
   assert(inputs[0].numDim == inputs[1].numDim);
@@ -115,7 +115,7 @@ void ElementBinary::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
+void ElementBinary::create_output_and_partition_with_dim(Model& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -176,7 +176,7 @@ OpMeta* ElementBinary::init_task(const Task* task,
   return m;
 }
 
-void ElementBinary::init(const FFModel& ff)
+void ElementBinary::init(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -392,7 +392,7 @@ void ElementBinary::forward_task(const Task* task,
   }
 }
 
-void ElementBinary::forward(const FFModel& ff)
+void ElementBinary::forward(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -583,7 +583,7 @@ void ElementBinary::backward_task(const Task *task,
     //in1_grad_ptr, in2_grad_ptr);
 }
 
-void ElementBinary::backward(const FFModel& ff)
+void ElementBinary::backward(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;

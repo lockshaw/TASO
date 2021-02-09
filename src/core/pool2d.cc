@@ -23,11 +23,8 @@ TensorHandle Graph::pool2d_max(const TensorHandle _input,
                                ActiMode _activation)
 {
   int num = _input->dim[1] * _kernelH * _kernelW;
-  DATATYPE* data_ptr = (DATATYPE*) malloc(num * sizeof(DATATYPE));
-  for (int i = 0; i < num; i++)
-    data_ptr[i] = 1.0f / (_kernelH * _kernelW);
   const int dims[4] = {_input->dim[1], 1, _kernelH, _kernelW};
-  TensorHandle weight = new_weight(4, dims, data_ptr);
+  TensorHandle weight = new_weight(4, dims);
 /*
   weight.numDim = 4;
   weight.dim[0] = _input.dim[1];
@@ -60,11 +57,8 @@ TensorHandle Graph::pool2d_avg(const TensorHandle _input,
                                ActiMode _activation)
 {
   int num = _input->dim[1] * _kernelH * _kernelW;
-  DATATYPE* data_ptr = (DATATYPE*) malloc(num * sizeof(DATATYPE));
-  for (int i = 0; i < num; i++)
-    data_ptr[i] = 1.0f / (_kernelH * _kernelW);
   const int dims[4] = {_input->dim[1], 1, _kernelH, _kernelW};
-  TensorHandle weight = new_weight(4, dims, data_ptr);
+  TensorHandle weight = new_weight(4, dims);
 /*
   weight.numDim = 4;
   weight.dim[0] = _input.dim[1];
@@ -98,7 +92,7 @@ Op Model::get_or_create_pool2d(Tensor _input, Tensor _weight,
                                ActiMode _activation)
 
 {
-  // keys are (inputN, inputC, inputH, inputW, kernelH, kernelW,              
+  // keys are (inputN, inputC, inputH, inputW, kernelH, kernelW,
   //           strideH, strideW, padding, activation, _type)
   Pool2DKey key(_input, _type, _kernelH, _kernelW, _strideH, _strideW,
                 _padding, _activation);
@@ -125,7 +119,7 @@ Pool2D::Pool2D(Model* _model, Tensor _input,
                ActiMode _activation)
 : OpBase(_input, _weight, _model, _type),
   kernelH(_kernelH), kernelW(_kernelW),
-  strideH(_strideH), strideW(_strideW), 
+  strideH(_strideH), strideW(_strideW),
   padding(_padding), activation(_activation)
 {
   assert(type == OP_POOL2D_MAX || type == OP_POOL2D_AVG);

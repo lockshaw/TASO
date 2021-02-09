@@ -18,7 +18,6 @@
 #include "taso/ops.h"
 #include "rules.pb.h"
 #include <queue>
-namespace taso {
 
 enum Compare {
   COMPARE_EQ,
@@ -220,5 +219,4 @@ public:
   std::vector<OpX*> dstOps;
 };
 
-} // namespace XFlow
 #endif

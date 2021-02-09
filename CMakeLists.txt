@@ -35,15 +35,22 @@ message("Protobuf headers=" ${PROTO_HDRS})
 message("Protobuf cpps=" ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_SRCS
-  src/core/*.cc
+  # src/core/activation.cc
+  # src/core/concat.cc
+  # src/core/conv2d.cc
+  # src/core/graph.cc
+  # src/core/graph_ops.cc
+  src/core/ops.cc
+  # src/core/pool2d.cc
+  # src/core/split.cc
+  src/core/substitution.cc
+  src/core/tensor.cc
   src/flexflow/runtime/*.cc
-  src/flexflow/ops/element_binary.cu
   )
 list(APPEND TASO_SRCS ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_CUDA_SRCS
-  src/cudnn/*.cu
-  src/flexflow/ops/element_binary.cu
+  src/flexflow/ops/conv_2d.cu
   )
 
 file(GLOB_RECURSE TASO_DNNL_SRCS

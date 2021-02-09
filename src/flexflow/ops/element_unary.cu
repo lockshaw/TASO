@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "taso/ops.h"
+#include "flexflow/cuda_helper.h"
 
-Tensor FFModel::unary(OperatorType op,
+Tensor Model::unary(OperatorType op,
                       const Tensor& x,
                       const char *name)
 {
@@ -25,33 +25,33 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
-Tensor FFModel::exp(const Tensor& x,
+Tensor Model::exp(const Tensor& x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, name);
 }
 
-Tensor FFModel::relu(const Tensor& x, const char *name)
+Tensor Model::relu(const Tensor& x, const char *name)
 {
   return this->unary(OP_RELU, x, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor& x, const char *name)
+Tensor Model::sigmoid(const Tensor& x, const char *name)
 {
   return this->unary(OP_SIGMOID, x, name);
 }
 
-Tensor FFModel::tanh(const Tensor& x, const char *name)
+Tensor Model::tanh(const Tensor& x, const char *name)
 {
   return this->unary(OP_TANH, x, name);
 }
 
-Tensor FFModel::elu(const Tensor& x, const char *name)
+Tensor Model::elu(const Tensor& x, const char *name)
 {
   return this->unary(OP_ELU, x, name);
 }
 
-ElementUnary::ElementUnary(FFModel& model,
+ElementUnary::ElementUnary(Model& model,
                            OperatorType _op_type,
                            const Tensor& x,
                            const char* name)
@@ -81,12 +81,12 @@ bool ElementUnary::use_cudnn(OperatorType type)
   return false;
 }
 
-void ElementUnary::create_weights(FFModel& model)
+void ElementUnary::create_weights(Model& model)
 {
   // Do nothing
 }
 
-void ElementUnary::create_output_and_partition(FFModel& model)
+void ElementUnary::create_output_and_partition(Model& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
@@ -108,7 +108,7 @@ void ElementUnary::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void ElementUnary::create_output_and_partition_with_dim(FFModel& model)
+void ElementUnary::create_output_and_partition_with_dim(Model& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -175,7 +175,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
   return m;
 }
 
-void ElementUnary::init(const FFModel& ff)
+void ElementUnary::init(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -304,7 +304,7 @@ void ElementUnary::forward_task(const Task* task,
   forward_kernel(m, input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void ElementUnary::forward(const FFModel& ff)
+void ElementUnary::forward(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -428,7 +428,7 @@ void ElementUnary::backward_task(const Task* task,
   backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume());
 }
 
-void ElementUnary::backward(const FFModel& ff)
+void ElementUnary::backward(const Model& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;

@@ -34,17 +34,6 @@
     }                                                                  \
 } while(0)
 
-#ifdef FF_ENABLE_NCCL
-#define checkNCCL(cmd) do {                         \
-  ncclResult_t r = cmd;                             \
-  if (r!= ncclSuccess) {                            \
-    printf("Failed, NCCL error %s:%d '%s'\n",             \
-        __FILE__,__LINE__,ncclGetErrorString(r));   \
-    exit(EXIT_FAILURE);                             \
-  }                                                 \
-} while(0)
-#endif
-
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
@@ -59,7 +48,6 @@ inline int GET_BLOCKS(const int N)
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
-using namespace Legion;
 
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b);
@@ -98,5 +86,5 @@ template<typename T>
 void print_tensor(const T* ptr, size_t num_elements, const char* prefix);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
-                                                 Legion::Domain domain);
+                                                 Domain domain);
 #endif

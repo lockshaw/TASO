@@ -15,28 +15,20 @@
 
 #include "simulator.h"
 #include "model.h"
-#include "realm/runtime_impl.h"
-#include "realm/cuda/cuda_module.h"
 #include "cuda_helper.h"
 
 typedef long long int coord_t;
 
-typedef Realm::Point<1, coord_t> Point1;
-typedef Realm::Rect<1, coord_t> Rect1;
+//typedef Realm::Point<1, coord_t> Point1;
+//typedef Realm::Rect<1, coord_t> Rect1;
 
 Simulator::Simulator(const FFModel* model,
-                     FFHandler _handler,
-                     Memory _memory)
-: memory(_memory), handler(_handler),
+                     FFHandler _handler)
+: handler(_handler),
   offset(0), warmup_times(5), repeat_times(10)
 {
   // Allocate simulator memory
-  Rect1 bounds(Point1(0), Point1(0));
-  std::vector<size_t> field_sizes;
-  field_sizes.push_back(model->config.simulator_work_space_size);
-  Realm::RegionInstance::create_instance(simulatorInst,
-      memory, bounds, field_sizes, 0, Realm::ProfilingRequestSet()).wait();
-  base_ptr = (char*)simulatorInst.pointer_untyped(0, sizeof(char));
+  cudaMalloc(&base_ptr, model->config.simulator_work_space_size)
   capacity = model->config.simulator_work_space_size;
 
   float inter_gpu_bandwidth = 12 * 1024 * 1024.0f; /* B/ms*/
@@ -100,63 +92,3 @@ Simulator::~Simulator(void)
 {
   simulatorInst.destroy();
 }
-
-__host__
-void Simulator::strategy_search_task(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
-                                     Context ctx, Runtime *runtime)
-{
-  const FFModel* model = *((FFModel**) task->args);
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-         .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
-  // Realm::MemoryImpl* memImpl =
-  //     Realm::get_runtime()->get_memory_impl(gpu_mem);
-  // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
-  // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
-  // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
-  // Assume this task is running on GPU0
-  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
-  // Set cublas/cudnn streams to allow Realm catch the events
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(simulator->handler.blas, stream));
-  checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
-#endif
-  std::map<Op*, ParallelConfig> strategies;
-  if (model->config.import_strategy_file.length() > 0) {
-    // Load the strategy from config.strategies
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      MappingTagID key = FFConfig::get_hash_id(std::string(model->layers[l]->name));
-      std::map<MappingTagID, ParallelConfig>::const_iterator iter;
-      iter = model->config.strategies.find(key);
-      if (iter == model->config.strategies.end()) {
-        fprintf(stderr, "ERROR: Cannot find strategy for operator %s in "
-                "strategy file %s\n", model->layers[l]->name,
-                model->config.import_strategy_file.c_str());
-      }
-      strategies[model->layers[l]] = iter->second;
-    }
-  } else {
-    // Start from data parallel
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
-    }
-  }
-
-  model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
-  if (model->config.export_strategy_file.length() > 0) {
-    fprintf(stderr, "Exporting the best discovered strategy to %s\n",
-        model->config.export_strategy_file.c_str());
-    std::map<Op*, ParallelConfig>::const_iterator iter;
-    std::map<std::string, ParallelConfig> strategy_output;
-    for (iter = strategies.begin(); iter != strategies.end(); iter++) {
-      strategy_output[iter->first->name] = iter->second;
-    }
-    save_strategies_to_file(model->config.export_strategy_file, strategy_output);
-  }
-  // Start from data
-  // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
-  delete(simulator);
-}
-

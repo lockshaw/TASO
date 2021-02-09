@@ -40,62 +40,67 @@ cdef extern from "taso/ops.h" namespace "taso":
         OP_CONV2D
         OP_DROPOUT
         OP_LINEAR
-        OP_POOL2D_MAX
-        OP_POOL2D_AVG
+        OP_BATCHMATMUL
+        OP_POOL2D
         OP_RELU
         OP_SIGMOID
         OP_TANH
+        OP_ELU
+        OP_FLAT
+        OP_SOFTMAX
         OP_BATCHNORM
         OP_CONCAT
         OP_SPLIT
+        OP_EMBEDDING
         OP_RESHAPE
+        OP_REVERSE
         OP_TRANSPOSE
-        # RNN operators
         OP_EW_ADD
         OP_EW_MUL
         OP_MATMUL
-        OP_SCALARMUL
+        OP_MUL
         OP_ENLARGE
         OP_MERGE_GCONV
-        OP_CONSTANT_IMM,
-        OP_CONSTANT_ICONV,
-        OP_CONSTANT_ONE,
-        OP_CONSTANT_POOL,
-        OP_SQUEEZE,
-        OP_UNSQUEEZE,
-        OP_EW_SUB,
-        OP_EW_DIV,
-        OP_EW_EQUAL,
-        OP_EW_GREATER,
-        OP_EW_LESS,
-        OP_EW_MAX,
-        OP_EW_MIN,
-        OP_REDUCE_ARGMAX,
-        OP_REDUCE_ARGMIN,
-        OP_REDUCE_MAX,
-        OP_REDUCE_MEAN,
-        OP_REDUCE_MIN,
-        OP_REDUCE_PROD,
-        OP_REDUCE_SUM,
-        OP_PAD,
-        OP_SHAPE,
-        OP_SIZE,
-        OP_TOPK,
-        OP_WHERE,
-        OP_CEIL,
-        OP_CAST,
-        OP_EXP,
-        OP_ROUND,
-        OP_LOG,
-        OP_LOGICAL_NOT,
-        OP_SQRT,
-        OP_LEAKYRELU,
-        OP_SLICE,
-        OP_RESIZE,
-        OP_PRELU,
-        OP_FUSE_CONV_BATCHNORM,
-        OP_FUSE_CONV_BATCHNORM_ALPHA_VAR,
-        OP_FUSE_CONV_BATCHNORM_BIAS,
+        OP_CONSTANT_IMM
+        OP_CONSTANT_ICONV
+        OP_CONSTANT_ONE
+        OP_CONSTANT_POOL
+        OP_SQUEEZE
+        OP_UNSQUEEZE
+        OP_EW_SUB
+        OP_EW_DIV
+        OP_EW_EQUAL
+        OP_EW_GREATER
+        OP_EW_LESS
+        OP_EW_MAX
+        OP_EW_MIN
+        OP_REDUCE_ARGMAX
+        OP_REDUCE_ARGMIN
+        OP_REDUCE_MAX
+        OP_REDUCE_MEAN
+        OP_REDUCE_MIN
+        OP_REDUCE_PROD
+        OP_REDUCE_SUM
+        OP_PAD
+        OP_SHAPE
+        OP_SIZE
+        OP_TOPK
+        OP_WHERE
+        OP_CEIL
+        OP_CAST
+        OP_EXP
+        OP_ROUND
+        OP_LOG
+        OP_LOGICAL_NOT
+        OP_SQRT
+        OP_LEAKYRELU
+        OP_SLICE
+        OP_RESIZE
+        OP_PRELU
+        OP_MULTIHEAD_ATTENTION
+        OP_FUSE_CONV_BATCHNORM
+        OP_FUSE_CONV_BATCHNORM_ALPHA_VAR
+        OP_FUSE_CONV_BATCHNORM_BIAS
         OP_BROADCAST_ADD
 
     # This must be consistent with include/taso/ops.h
@@ -260,7 +265,7 @@ cdef extern from "taso/ops.h" namespace "taso":
         TensorHandle unsqueeze(const TensorHandle input,
                                const vector[int] axes)
         TensorHandle new_input(int ndim, const int* dims)
-        TensorHandle new_weight(int ndim, const int* dims, const float* data)
+        TensorHandle new_weight(int ndim, const int* dims)
         Graph* optimize(float alpha, int budget, bool print_subst)
         vector[Graph*] optimizeMulti(float alpha, int budget, bool print_subst, int numResults)
         int get_operator_list(Op* ops, size_t maxNumOps)

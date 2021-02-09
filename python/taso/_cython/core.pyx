@@ -522,21 +522,13 @@ cdef class PyGraph:
         t = ctypes.cast(<unsigned long long>handle, ctypes.c_void_p)
         return PyTensor(t)
 
-    def new_weight(self, *, tuple dims, data = None):
+    def new_weight(self, *, tuple dims):
         cdef int ndim = len(dims)
         cdef int dim_array[16]
-        cdef array.array arr
-        if data is None:
-            data = np.random.rand(*dims)
-        if isinstance(data, np.ndarray):
-            assert dims == data.shape
-            arr = array.array('f', data.flatten().tolist())
-        else:
-            arr = array.array('f', data)
         assert (ndim < 16)
         for i in range(0, len(dims)):
             dim_array[i] = dims[i]
-        cdef TensorHandle handle = self.p_graph.new_weight(ndim, dim_array, arr.data.as_floats)
+        cdef TensorHandle handle = self.p_graph.new_weight(ndim, dim_array)
         t = ctypes.cast(<unsigned long long>handle, ctypes.c_void_p)
         return PyTensor(t)
 

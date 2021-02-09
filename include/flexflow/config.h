@@ -16,9 +16,12 @@
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
 #include <cstring>
+#include <string>
+#include <map>
 #include <cudnn.h>
 #include <cublas_v2.h>
-#include "taso/ops.h"
+/* #include "taso/ops.h" */
+#include "flexflow/legion_mock.h"
 
 // ========================================================
 // Define Runtime Constants

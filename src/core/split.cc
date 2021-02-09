@@ -173,13 +173,7 @@ bool Split::get_int_parameter(PMParameter para, int* value)
 }
 
 void Split::map(void)
-{
-  size_t offset = 0;
-  for (int i = 0; i < numOutputs; i++) {
-    outputs[i].data_ptr = (DATATYPE*)inputs[0].data_ptr + offset;
-    offset += outputs[i].dim[axis] * inputs[0].stride[axis];
-  }
-}
+{ }
 
 void Split::unmap(void)
 {}

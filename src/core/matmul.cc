@@ -24,11 +24,7 @@ TensorHandle Graph::fc(const TensorHandle _input,
   const int dims[2] = {_outputC, _input->dim[1]};
   int total = dims[0] * dims[1];
   // Randomly initialize weights
-  DATATYPE* data = (DATATYPE*) malloc(total * sizeof(DATATYPE));
-  for (int i = 0; i < total; i++)
-    data[i] = (DATATYPE)std::rand() / RAND_MAX;
-  TensorHandle weight = new_weight(2, dims, data);
-  free(data);
+  TensorHandle weight = new_weight(2, dims);
   return matmul(_input, weight, acti);
 }
 
