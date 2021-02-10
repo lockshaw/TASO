@@ -124,8 +124,9 @@ Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
                                PaddingMode _padding,
                                ActiMode _activation)
 {
-  if (_input.dim[1] % _weight.dim[1] != 0)
+  if (_input.dim[1] % _weight.dim[1] != 0) {
     return Op::INVALID_OP;
+  }
   // key is (inputN, inputC, inputH, inputW, outputC, kernelH, kernelW,
   //         strideH, strideW, padding, activation)
   Conv2DKey key(_input, _weight, _strideH, _strideW, _padding, _activation);

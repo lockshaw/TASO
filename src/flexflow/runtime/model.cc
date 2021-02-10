@@ -682,12 +682,12 @@ void FFModel::to_dot(std::unique_ptr<std::ostream> s) const {
         op.get()
       );
     }
-    for (int i = 0; i < op->numOutputs; i++) {
-      dot.add_edge(
-        op.get(),
-        op->outputs[i].owner_op
-      );
-    }
+    /* for (int i = 0; i < op->numOutputs; i++) { */
+    /*   dot.add_edge( */
+    /*     op.get(), */
+    /*     op->outputs[i].owner_op */
+    /*   ); */
+    /* } */
   }
   dot.close();
 }

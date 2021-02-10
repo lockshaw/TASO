@@ -86,7 +86,7 @@ namespace flexflow {
     DotFile(std::unique_ptr<std::ostream> s)
       : node_id(0), out(std::move(s))
     {
-      *out << "digraph taskgraph {";
+      *out << "digraph taskgraph {" << std::endl;
     }
 
     void set_filename(std::string filename) {

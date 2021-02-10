@@ -158,7 +158,7 @@ struct Op {
   inline bool operator<(const Op& b) const {
     if (guid != b.guid) return guid < b.guid;
     if (ptr != b.ptr) return ptr < b.ptr;
-    return true;
+    return false;
   }
   Op& operator=(const Op& op)
   {

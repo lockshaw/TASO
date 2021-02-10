@@ -469,7 +469,7 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
       bestCost = subGraph->total_cost();
       bestGraph = subGraph;
     }
-    if (counter > budget) {
+    if (counter >= budget) {
       // TODO: free all remaining candidates when budget exhausted
       break;
     }
@@ -499,7 +499,8 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   std::unique_ptr<std::ofstream> dotfile = std::unique_ptr<std::ofstream>(new std::ofstream());
   dotfile->open("/home/users/unger/FlexFlow/flexflowified.dot");
   flexflow::FFConfig ffconfig;
-  Converter c(ffconfig, *bestGraph, std::move(dotfile));
+  Converter c(ffconfig, *bestGraph);
+  c.convert(std::move(dotfile));
 
   bestGraph->print_costs();
   if (print_subst) {

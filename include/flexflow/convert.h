@@ -7,11 +7,10 @@
 class Converter {
 public:
   Converter(flexflow::FFConfig ffconfig, taso::Graph const &graph);
-  Converter(flexflow::FFConfig ffconfig, taso::Graph const &graph, std::unique_ptr<std::ostream> oss);
+  void convert(std::unique_ptr<std::ostream> oss);
 
   flexflow::FFModel const &get_converted() const;
 private:
-  flexflow::FFModel convert(std::unique_ptr<std::ostream> oss);
   void convertOp(taso::Op const &op);
   void rawConvertOp(taso::Op const &op);
 
