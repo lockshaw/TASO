@@ -48,6 +48,10 @@ using DNNLNet = std::vector<std::pair<dnnl::primitive, std::unordered_map<int, d
 #include <memory>
 using namespace std;
 
+namespace flexflow {
+  class FFModel;
+}
+
 namespace taso {
 
 #define MAX_DIM 8
@@ -670,6 +674,7 @@ private:
   void buildTRTNetworkHelper(INetworkDefinition *network, std::map<SrcEdge, ITensor *, SrcEdgeCompare>& outputs, Edge edge);
 #endif
   void export_op(ofstream &file_stream, Op &op);
+  flexflow::FFModel to_ff() const;
 private:
   TensorHandle input_wrapper(const TensorHandle _input);
   TensorHandle weight_wrapper(const TensorHandle _weight);
@@ -859,6 +864,7 @@ public:
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int axis;
+  int n;
   bool needCopy[MAX_NUM_INPUTS];
 };
 

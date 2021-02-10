@@ -28,7 +28,7 @@ TensorHandle Graph::concat(int axis, int n, const TensorHandle* _inputs)
   Op op = model->get_or_create_concat(axis, n, inputTensors, needCopy);
   // Assert op must be valid
   assert (op != Op::INVALID_OP);
-  for (int i = 0; i < n; i++) 
+  for (int i = 0; i < n; i++)
     add_edge(_inputs[i]->op, op, _inputs[i]->idx, i);
   TensorHandle t = new Tensor(op.ptr->outputs[0]);
   t->op = op;
@@ -68,7 +68,7 @@ Op Model::get_or_create_concat(int axis, int n, Tensor* _inputs, bool* _needCopy
 }
 
 Concat::Concat(Model* _model, int _axis, int n, Tensor* _inputs, bool* _needCopy)
-  : OpBase(n, _inputs, _model, OP_CONCAT), axis(_axis)
+  : OpBase(n, _inputs, _model, OP_CONCAT), axis(_axis), n(n)
 {
   //for (int i = 0; i < n; i++) {
   //  printf("  concat2[%d]:", i);

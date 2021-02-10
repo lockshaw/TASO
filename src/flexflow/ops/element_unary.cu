@@ -22,9 +22,12 @@ Tensor FFModel::unary(OperatorType op,
                       const Tensor& x,
                       const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, op, x, name);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new ElementUnary(*this, op, x, name)
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Tensor FFModel::exp(const Tensor& x,

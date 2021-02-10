@@ -550,7 +550,7 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
   //TODO: need to make sure opId is not an output layer of the model
   if (opId == layers.size() - 1)
     return;
-  next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+  next[layers[opId].get()] = layers[opId]->get_random_parallel_config(*this);
 }
 
 void FFModel::optimize(Simulator* simulator,
@@ -669,10 +669,32 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
   }
 }
 
+void FFModel::to_dot(std::unique_ptr<std::ostream> s) const {
+  DotFile<Op*> dot(std::move(s));
+
+  for (auto const &op : this->layers) {
+    std::map<std::string, std::string> nodeAttrs;
+    nodeAttrs["label"] = std::string(op->name);
+    dot.add_node(op.get(), nodeAttrs);
+    for (int i = 0; i < op->numInputs; i++) {
+      dot.add_edge(
+        op->inputs[i].owner_op,
+        op.get()
+      );
+    }
+    for (int i = 0; i < op->numOutputs; i++) {
+      dot.add_edge(
+        op.get(),
+        op->outputs[i].owner_op
+      );
+    }
+  }
+  dot.close();
+}
+
 // ========================================================
 // class FFConfig
 // ========================================================
-
 // Default Config Parameters
 struct DefaultConfig {
   const static int epochs = 1;

@@ -23,9 +23,12 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, axis, name);
-  layers.push_back(cat);
-  return cat->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Concat(*this, n, tensors, axis, name)
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Concat::Concat(FFModel& model,

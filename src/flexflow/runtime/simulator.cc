@@ -337,7 +337,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   task_manager->reset();
   // Step 1: register forward and backward tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+    Op* op = model->layers[l].get();
     ParallelConfig config = global.find(op)->second;
     float forward_time = measure_op_forward_time(op, config);
     float backward_time = measure_op_backward_time(op, config);
@@ -353,7 +353,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   // Step 2: insert dependencies and comm. tasks before compute tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+    Op* op = model->layers[l].get();
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
@@ -399,7 +399,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   if (model->config.search_overlap_backward_update) {
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
-      Op* op = model->layers[l];
+      Op* op = model->layers[l].get();
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
@@ -441,7 +441,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       barriers.push_back(t);
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+      Op* op = model->layers[l].get();
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < pc.num_parts(); j++) {
         SimTask* backT = task_manager->get_backward_task(op, j);
@@ -449,7 +449,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+      Op* op = model->layers[l].get();
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;

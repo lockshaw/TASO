@@ -25,10 +25,12 @@ Tensor FFModel::dense(const Tensor& input,
                       const Op* shared_op,
                       const char *name)
 {
-  Linear *li = new Linear(*this, input, outDim, activation, use_bias,
-                          shared_op, name);
-  layers.push_back(li);
-  return li->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Linear(*this, input, outDim, activation, use_bias, shared_op, name)
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Linear::Linear(FFModel& model,

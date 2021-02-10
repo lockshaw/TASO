@@ -26,11 +26,15 @@ Tensor FFModel::pool2d(const Tensor& input,
                        char const *name)
 {
   assert(input.numDim == 4); /*NCHW*/
-  Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW,
-                      type, activation, name);
-  layers.push_back(pool);
-  return pool->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Pool2D(*this, input, kernelH, kernelW,
+                 strideH, strideW, paddingH, paddingW,
+                 type, activation, name)
+
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Pool2D::Pool2D(FFModel& model,

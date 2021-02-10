@@ -19,6 +19,9 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include "flexflow/simulator.h"
+#include "flexflow/model.h"
+#include "flexflow/convert.h"
 
 using namespace std;
 using namespace taso;
@@ -493,6 +496,11 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   //printf("bestCost = %.4lf\n", bestGraph->total_cost());
   //printf("Optimized graph: end-to-end execution time =\n");
   //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run());
+  std::unique_ptr<std::ofstream> dotfile = std::unique_ptr<std::ofstream>(new std::ofstream());
+  dotfile->open("/home/users/unger/FlexFlow/flexflowified.dot");
+  flexflow::FFConfig ffconfig;
+  Converter c(ffconfig, *bestGraph, std::move(dotfile));
+
   bestGraph->print_costs();
   if (print_subst) {
     printf("        ===== Applied Substitutions =====\n\n");

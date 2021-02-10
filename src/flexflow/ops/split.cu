@@ -24,10 +24,13 @@ void FFModel::split(const Tensor& input,
                     int axis,
                     const char* name)
 {
-  Split* split = new Split(*this, input, splits, axis, name);
-  layers.push_back(split);
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Split(*this, input, splits, axis, name)
+    )
+  );
   for (size_t i = 0; i < splits.size(); i++)
-    outputs[i] = split->outputs[i];
+    outputs[i] = layers.back()->outputs[i];
 }
 
 Split::Split(FFModel& model,

@@ -30,11 +30,15 @@ Tensor FFModel::conv2d(const Tensor& input,
                        char const *name)
 {
   assert(input.numDim == 4); /*NCHW*/
-  Conv2D *conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
-      strideH, strideW, paddingH, paddingW, groups, activation,
-      use_bias, shared_op, name);
-  layers.push_back(conv);
-  return conv->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Conv2D(*this, input, outChannels, kernelH, kernelW,
+             strideH, strideW, paddingH, paddingW, groups, activation,
+             use_bias, shared_op, name
+      )
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 /*

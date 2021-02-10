@@ -24,8 +24,12 @@ Tensor FFModel::binary(OperatorType op,
                        char const *name)
 {
   ElementBinary *ele = new ElementBinary(*this, op, in1, in2, name);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new ElementBinary(*this, op, in1, in2, name)
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Tensor FFModel::add(const Tensor& in1,

@@ -22,11 +22,12 @@ Tensor FFModel::flat(const Tensor& input,
                      const char* name)
 {
   assert(input.numDim == 4);
-  //assert(strategies.find(name) != strategies.end());
-  //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, input, name);
-  layers.push_back(flat);
-  return flat->outputs[0];
+  layers.push_back(
+    std::unique_ptr<Op>(
+      new Flat(*this, input, name)
+    )
+  );
+  return layers.back()->outputs[0];
 }
 
 Flat::Flat(FFModel& model,

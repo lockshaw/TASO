@@ -24,6 +24,7 @@
 #include <functional>
 #include "flexflow/ffconst.h"
 #include "flexflow/legion_mock.h"
+#include <memory>
 
 using namespace Legion;
 
@@ -216,13 +217,14 @@ namespace flexflow {
     std::string get_operator_type_name(OperatorType type) const;
     // Internal funcitons
     Tensor get_tensor_from_guid(int guid);
+    void to_dot(std::unique_ptr<std::ostream> oss) const;
   public:
     int op_global_guid;
     FFConfig config;
     Tensor label_tensor;
     //std::vector<Tensor> input_tensors;
 
-    std::vector<Op*> layers;
+    std::vector<std::unique_ptr<Op>> layers;
     std::vector<Parameter> parameters;
     FFHandler handlers[MAX_NUM_WORKERS];
     //DataLoader *dataLoader;
