@@ -553,11 +553,12 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
   next[layers[opId].get()] = layers[opId]->get_random_parallel_config(*this);
 }
 
-void FFModel::optimize(Simulator* simulator,
+float FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
                        size_t budget, float alpha) const
 {
   // Start from data parallel
+  printf("Running simulator for model with %d nodes\n", best.size());
   std::map<Op*, ParallelConfig> current, next;
   float best_runtime = simulator->simulate_runtime(this, best);
   current = best;
@@ -603,6 +604,8 @@ void FFModel::optimize(Simulator* simulator,
     printf("]\n");
   }
   printf("============= MCMC Search Finished ============\n\n");
+  printf("Best runtime: %f\n", best_runtime);
+  return best_runtime;
 }
 
 std::string FFModel::get_operator_type_name(OperatorType type) const
@@ -699,15 +702,17 @@ void FFModel::to_dot(std::unique_ptr<std::ostream> s) const {
 struct DefaultConfig {
   const static int epochs = 1;
   const static int iterations = 1;
-  const static int batchSize = 64;
+  const static int batchSize = 6400;
   const static bool profiling = false;
   const static bool debug = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
-  const static int workersPerNode = 0;
-  const static int cpusPerNode = 0;
+  //const static int workersPerNode = 0;
+  const static int workersPerNode = 1;
+  //const static int cpusPerNode = 0;
+  const static int cpusPerNode = 1;
   const static size_t searchBudget = 0;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;

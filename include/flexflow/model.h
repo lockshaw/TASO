@@ -209,7 +209,7 @@ namespace flexflow {
     //                     const IndexSpaceT<NDIM>& part_is,
     //                     DataType data_type,
     //                     bool create_grad = true);
-    void optimize(Simulator* simulator,
+    float optimize(Simulator* simulator,
                   std::map<Op*, ParallelConfig>& best,
                   size_t budget, float alpha) const;
     void rewrite(const std::map<Op*, ParallelConfig>& current,

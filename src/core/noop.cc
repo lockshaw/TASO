@@ -59,12 +59,10 @@ Op Model::create_weight(Tensor _weight, OpType _type)
 {
   assert(_type == OP_WEIGHT);
   //assert(_weight.data_ptr != NULL);
-  if (_weight.data_ptr == NULL) {
-    fprintf(stderr, "[%s:%d] Warning: Find uninitialized weight tensor.\n", __FILE__, __LINE__);
-  }
   Op ret;
   ret.ptr = new NoOp(this, _weight, _type);
   ret.guid = global_unique_id ++;
+  assert (ret.guid != OP_WEIGHT);
   return ret;
 }
 
@@ -103,14 +101,14 @@ bool NoOp::get_int_parameter(PMParameter para, int* value)
   return OpBase::get_int_parameter(para, value);
 }
 
-void NoOp::map(void)
-{}
+/* void NoOp::map(void) */
+/* {} */
 
-void NoOp::unmap(void)
-{}
+/* void NoOp::unmap(void) */
+/* {} */
 
-void NoOp::forward(bool block)
-{}
+/* void NoOp::forward(bool block) */
+/* {} */
 
 void NoOp::collect_costs(float& exe_time, float& flops,
                          float& mem_acc, int& num_kernels)

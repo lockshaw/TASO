@@ -50,6 +50,7 @@ using namespace std;
 
 namespace flexflow {
   class FFModel;
+  class Simulator;
 }
 
 namespace taso {
@@ -62,7 +63,6 @@ namespace taso {
 #define MAX_TENSOR_SIZE 512 * 1024 * 1024 // 512MB
 #define REPEAT_TIMES 32
 #define WARMUP_TIMES 8
-const size_t WORK_SPACE_SIZE = (size_t)2 * 1024 * 1024 * 1024; // 2GB
 typedef float DATATYPE;
 
 class Model;
@@ -166,8 +166,8 @@ struct Op {
     ptr = op.ptr;
     return *this;
   }
-  std::string op_to_string(const OpBase* ptr);
-  std::string to_string(void)
+  std::string op_to_string(const OpBase* ptr) const;
+  std::string to_string(void) const
   {
     if (ptr != NULL) {
       return op_to_string(ptr) + "_" + std::to_string(guid);
@@ -176,6 +176,8 @@ struct Op {
       return "UnmappedOp_" + std::to_string(guid);
     }
   }
+  std::map<std::string, std::string> to_dot() const;
+
   static const Op INVALID_OP;
   size_t guid;
   OpBase* ptr;
@@ -285,7 +287,7 @@ struct Tensor {
   static const int MAX_KEY_LENGTH = (MAX_NUM_SPLITS + 2) * MAX_DIM + 2;
   static const int MAGIC_NUMBER = 23333;
   Tensor(void)
-  : numDim(0), idx(0), op(), data_ptr(NULL) {
+  : numDim(0), idx(0), op() {
     for (int i = 0; i < MAX_DIM; i++)
       split[i].num = 0;
   }
@@ -474,9 +476,9 @@ public:
   virtual bool get_int_parameter(PMParameter, int*);
   virtual bool get_float_parameter(PMParameter, float*);
   //virtual bool get_ints_parameter(PMParameter, std::vector<int>*);
-  virtual void forward(bool block = false) = 0;
-  virtual void map(void) = 0;
-  virtual void unmap(void) = 0;
+  /* virtual void forward(bool block = false) = 0; */
+  /* virtual void map(void) = 0; */
+  /* virtual void unmap(void) = 0; */
   virtual void collect_costs(float& exe_time, float& flops,
                              float& mem_acc, int& num_kernels) = 0;
 public:
@@ -646,7 +648,7 @@ public:
   // Helper Functions for Cython
   Op find_op_or_fail(size_t guid);
   Graph* optimize(float alpha, int budget, bool print_subst);
-  std::vector<Graph *> optimizeMulti(float alpha, int budget, bool print_subst, int numResults);
+  /* std::vector<Graph *> optimizeMulti(float alpha, int budget, bool print_subst, int numResults); */
   Graph* preprocess_weights(void);
   int get_operator_list(Op* opList, size_t maxNumOps);
   int get_input_edges(Edge* opList, size_t guid);
@@ -664,8 +666,11 @@ public:
   void print(void);
   bool check_correctness(void);
   bool has_loop(void);
-  float total_cost(void);
-  float run();
+  float total_cost(flexflow::Simulator *sim);
+  float total_cost();
+  void to_dot(std::unique_ptr<std::ostream> oss) const;
+  void to_filtered_dot(std::unique_ptr<std::ostream> oss) const;
+  /* float run(); */
   void print_costs(void);
   void print_measurements(void);
 #ifdef TRT
@@ -692,9 +697,9 @@ class Constant : public OpBase {
 public:
   Constant(Model* _model, int ndim, int* dims, OpType _type);
   ~Constant(void);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   bool get_int_parameter(PMParameter para, int*);
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
@@ -706,9 +711,9 @@ public:
          PaddingMode _padding,
          ActiMode _activation);
   ~Conv2D(void);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   bool get_int_parameter(PMParameter para, int*);
   void get_padding(int* padH, int* padW);
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
@@ -734,11 +739,11 @@ public:
   Matmul(Model* _model, Tensor _input, Tensor _weight,
          ActiMode _actiMode);
   ~Matmul(void);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   bool get_int_parameter(PMParameter para, int*);
-  void set_layout(void);
+  void set_layout(void) {}; //FIXME NOP
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int outputC;
@@ -769,9 +774,9 @@ class Mul : public OpBase {
 public:
   Mul(Model* _model, const Tensor& x, const Tensor& y);
   ~Mul(void);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   bool get_int_parameter(PMParameter para, int*);
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
@@ -786,9 +791,9 @@ public:
   ~Pool2D(void);
   bool get_int_parameter(PMParameter para, int*);
   void get_padding(int* padH, int* padW);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
 #ifdef USE_CUDNN
@@ -806,9 +811,9 @@ public:
   Activation(Model* _model, Tensor _input, OpType _type, bool _inPlace);
   ~Activation(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
 #ifdef USE_CUDNN
@@ -826,10 +831,10 @@ public:
   ~BatchNorm(void);
   bool get_int_parameter(PMParameter para, int*);
   bool get_float_parameter(PMParameter para, float*);
-  float get_min_epsilon(void);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  float get_min_epsilon(void) {return 0.0;} //FIXME NOP
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   float epsilon;
@@ -847,9 +852,9 @@ public:
   Cast(Model* _model, const Tensor& _input, DataType _datatype);
   ~Cast(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -858,9 +863,9 @@ public:
   Concat(Model* _model, int _axis, int _n, Tensor* _inputs, bool* _needCopy);
   ~Concat(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int axis;
@@ -874,9 +879,9 @@ public:
   ~Element(void);
   bool use_kernel(void) const;
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
 #ifdef USE_CUDNN
@@ -891,9 +896,9 @@ public:
   ~ElementWiseUnary(void);
   bool use_kernel(void) const;
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -902,9 +907,9 @@ public:
   Enlarge(Model* _model, Tensor _w1, Tensor _w2);
   ~Enlarge(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -914,9 +919,9 @@ public:
                     const Tensor& _bias, const Tensor& _mean, const Tensor& _var);
   ~FuseConvBatchNorm(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -925,9 +930,9 @@ public:
   FuseConvBatchNormAlphaVar(Model* _model, const Tensor& _conv_w, const Tensor& _scale, const Tensor& _var);
   ~FuseConvBatchNormAlphaVar(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -937,9 +942,9 @@ public:
                     const Tensor& _bias, const Tensor& _mean, const Tensor& _var);
   ~FuseConvBatchNormBias(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -948,9 +953,9 @@ public:
   BroadcastAdd(Model* _model, const Tensor& _data, const Tensor& _bias);
   ~BroadcastAdd(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -959,9 +964,9 @@ public:
   MergeGConv(Model* _model, const Tensor& _weight, int count);
   ~MergeGConv(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int count;
@@ -972,9 +977,9 @@ public:
   NoOp(Model* _model, Tensor _input, OpType _type);
   ~NoOp(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -986,9 +991,9 @@ public:
       float _pad_value);
   ~Pad(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   std::vector<int> pad_before, pad_after;
@@ -1001,9 +1006,9 @@ public:
          const std::vector<int>& _axes, bool _keepdims);
   ~Reduce(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   bool keepdims;
@@ -1015,9 +1020,9 @@ public:
   Reshape(Model* _model, Tensor _input, const std::vector<int>& shape);
   ~Reshape(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -1026,9 +1031,9 @@ public:
   Resize(Model* _model, const Tensor& _input, const std::vector<int>& _shape);
   ~Resize(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   std::vector<int> shape;
@@ -1039,9 +1044,9 @@ public:
   Shape(Model* _model, const Tensor& _input, OpType _type);
   ~Shape(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -1054,9 +1059,9 @@ public:
         const std::vector<int>& _steps);
   ~Slice(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   std::vector<int> start, end, axes, steps;
@@ -1067,9 +1072,9 @@ public:
   Split(Model* _model, const Tensor& _input, int axis, const std::vector<int>& _sizes);
   ~Split(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int axis;
@@ -1081,9 +1086,9 @@ public:
   Squeeze(Model* _model, const Tensor& input, const std::vector<int>& axes);
   ~Squeeze(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   std::vector<int> axes;
@@ -1096,9 +1101,9 @@ public:
        bool _largest, bool _sorted);
   ~TopK(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int axis;
@@ -1112,9 +1117,9 @@ public:
             bool _shuffle);
   ~Transpose(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   int permIdx;
@@ -1126,9 +1131,9 @@ public:
   Unsqueeze(Model* _model, const Tensor& input, const std::vector<int>& axes);
   ~Unsqueeze(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 public:
   std::vector<int> axes;
@@ -1139,9 +1144,9 @@ public:
   Where(Model* _model, const Tensor& _input, const Tensor& _x, const Tensor& _y);
   ~Where(void);
   bool get_int_parameter(PMParameter para, int*);
-  void forward(bool block);
-  void map(void);
-  void unmap(void);
+  /* void forward(bool block); */
+  /* void map(void); */
+  /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
 };
 
@@ -1430,31 +1435,31 @@ public:
   // Special API for creating weight and input operator
   Op create_input(Tensor _input, OpType _type);
   Op create_weight(Tensor _weight, OpType _type);
-  void measure_conv2d_cost(Conv2D*);
-  void measure_matmul_cost(Matmul*);
-  void measure_mul_cost(Mul*);
-  void measure_pad_cost(Pad*);
-  void measure_pool2d_cost(Pool2D*);
-  void measure_topk_cost(TopK*);
-  void measure_transpose_cost(Transpose*);
-  void measure_reduce_cost(Reduce*);
-  void measure_reshape_cost(Reshape*);
-  void measure_resize_cost(Resize*);
-  void measure_activation_cost(Activation*);
-  void measure_batchnorm_cost(BatchNorm*);
-  void measure_cast_cost(Cast*);
-  void measure_concat_cost(Concat*);
-  void measure_shape_cost(Shape*);
-  void measure_slice_cost(Slice*);
-  void measure_split_cost(Split*);
-  void measure_element_cost(Element*);
-  void measure_elementwise_unary_cost(ElementWiseUnary*);
-  void measure_enlarge_cost(Enlarge*);
-  void measure_squeeze_cost(Squeeze*);
-  void measure_unsqueeze_cost(Unsqueeze*);
-  void measure_where_cost(Where*);
-  void* allocate_memory(size_t size, const DATATYPE* initial_data= NULL);
-  bool copy_memory(DATATYPE* dst, const DATATYPE* src, size_t size);
+  void measure_conv2d_cost(Conv2D*){}
+  void measure_matmul_cost(Matmul*){}
+  void measure_mul_cost(Mul*){}
+  void measure_pad_cost(Pad*){}
+  void measure_pool2d_cost(Pool2D*){}
+  void measure_topk_cost(TopK*){}
+  void measure_transpose_cost(Transpose*){}
+  void measure_reduce_cost(Reduce*){}
+  void measure_reshape_cost(Reshape*){}
+  void measure_resize_cost(Resize*){}
+  void measure_activation_cost(Activation*){}
+  void measure_batchnorm_cost(BatchNorm*){}
+  void measure_cast_cost(Cast*){}
+  void measure_concat_cost(Concat*){}
+  void measure_shape_cost(Shape*){}
+  void measure_slice_cost(Slice*){}
+  void measure_split_cost(Split*){}
+  void measure_element_cost(Element*){}
+  void measure_elementwise_unary_cost(ElementWiseUnary*){}
+  void measure_enlarge_cost(Enlarge*){}
+  void measure_squeeze_cost(Squeeze*){}
+  void measure_unsqueeze_cost(Unsqueeze*){}
+  void measure_where_cost(Where*){}
+  /* void* allocate_memory(size_t size, const DATATYPE* initial_data= NULL); */
+  /* bool copy_memory(DATATYPE* dst, const DATATYPE* src, size_t size); */
   float measure_oplist_runtime(const std::vector<OpBase*>& list);
   bool broadcastable(const Tensor& t1, const Tensor& t2);
 public:

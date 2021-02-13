@@ -93,7 +93,7 @@ Op Model::get_or_create_reduce(const Tensor& _input,
     reduceOp = reduce[key];
   } else {
     reduceOp = new Reduce(this, _input, _type, axes, keepdims);
-    measure_reduce_cost(reduceOp);
+    /* measure_reduce_cost(reduceOp); */
     reduce[key] = reduceOp;
   }
   Op ret;

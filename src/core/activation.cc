@@ -65,7 +65,7 @@ Op Model::get_or_create_activation(Tensor _input, OpType _type, bool _inPlace)
     actOp = activation[key];
   } else {
     actOp = new Activation(this, _input, _type, _inPlace);
-    measure_activation_cost(actOp);
+    /* measure_activation_cost(actOp); */
     activation[key] = actOp;
   }
   Op ret;

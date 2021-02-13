@@ -73,7 +73,9 @@ namespace flexflow {
   class DotFile {
   private:
     size_t node_id;
+    bool is_closed;
     std::map<T,size_t> node_ids;
+    std::set<T> described_nodes;
     std::unique_ptr<std::ostream> out;
     std::string get_node_name(size_t node_id) const {
       std::ostringstream s;
@@ -81,35 +83,49 @@ namespace flexflow {
       return s.str();
     }
   public:
-    DotFile() : node_id(0) {}
+    DotFile() : node_id(0), is_closed(false) {}
     DotFile(std::string const &filename) : DotFile(std::unique_ptr<std::ostream>(new std::ofstream(filename))) {}
     DotFile(std::unique_ptr<std::ostream> s)
-      : node_id(0), out(std::move(s))
+      : node_id(0), out(std::move(s)), is_closed(false)
     {
       *out << "digraph taskgraph {" << std::endl;
     }
+    ~DotFile() {
+      if (this->out && !this->is_closed) {
+        this->close();
+      }
+    }
 
     void set_filename(std::string filename) {
+      assert (!this->out);
       this->out = std::unique_ptr<std::ostream>(new std::ofstream(filename));
       *out << "digraph taskgraph {";
     }
-    void reserve_node(T const &t) {
+    bool reserve_node(T const &t) {
+      assert (!this->is_closed);
       if (this->node_ids.find(t) == this->node_ids.end()) {
         this->node_ids[t] = this->node_id++;
+        return true;
       }
+      return false;
     }
     void add_node(T const &t, std::map<std::string, std::string> const &params) {
+      assert (!this->is_closed);
       this->reserve_node(t);
-      *out << "  " << this->get_node_name(this->node_ids.at(t)) << " [";
-      for (auto it = params.begin(); it != params.end(); ++it)  {
-        *out << it->first << "=" << it->second;
-        if (std::next(it) != params.end()) {
-          *out << ",";
+      if (this->described_nodes.find(t) == this->described_nodes.end()) {
+        *out << "  " << this->get_node_name(this->node_ids.at(t)) << " [";
+        for (auto it = params.begin(); it != params.end(); ++it)  {
+          *out << it->first << "=" << it->second;
+          if (std::next(it) != params.end()) {
+            *out << ",";
+          }
         }
+        *out << "];" << std::endl;
+        this->described_nodes.insert(t);
       }
-      *out << "];" << std::endl;
     }
     void add_edge(T const &src, T const &dst) {
+      assert (!this->is_closed);
       this->reserve_node(src);
       this->reserve_node(dst);
       auto src_name = this->get_node_name(this->node_ids.at(src));
@@ -119,6 +135,7 @@ namespace flexflow {
     void close() {
       *out << "}";
       out->flush();
+      this->is_closed = true;
     }
   };
 
@@ -150,7 +167,7 @@ namespace flexflow {
 
   class Simulator {
   public:
-    Simulator(const FFModel* model,
+    Simulator(FFConfig const &config,
               FFHandler handler);
     void free_all();
     void* allocate(size_t num_elements, DataType type);

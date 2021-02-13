@@ -48,6 +48,8 @@
 using namespace Legion;
 
 namespace flexflow {
+  const size_t WORK_SPACE_SIZE = (size_t)2 * 1024 * 1024 * 1024; // 2GB
+
   struct ParallelConfig {
     enum DeviceType {
       GPU = 0,
@@ -77,6 +79,8 @@ namespace flexflow {
     cublasHandle_t blas;
     void *workSpace;
     size_t workSpaceSize;
+
+    void init();
   };
 
   struct FFInitInfo {

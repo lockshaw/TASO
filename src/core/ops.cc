@@ -29,6 +29,10 @@ using namespace taso;
 const Op Op::INVALID_OP = Op();
 const SplitInfo SplitInfo::NO_SPLIT = SplitInfo();
 
+Model::Model()
+  : isTraining(false), print_cost(false), global_unique_id(100)
+{ }
+
 /*
 bool Op::operator==(const Op& b)
 {
@@ -244,116 +248,122 @@ bool OpBase::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value)
   return true;
 }
 
-std::string Op::op_to_string(const OpBase* ptr)
-{
-  switch (ptr->type) {
-    case OP_INPUT:
-      return "Input";
-    case OP_WEIGHT:
-      return "Weight";
-    case OP_ANY:
-      return "Any";
-    case OP_CONV2D:
-      return "Conv";
-    case OP_DROPOUT:
-      return "Dropout";
-    case OP_LINEAR:
-      return "Linear";
-    case OP_POOL2D_MAX:
-      return "MaxPool";
-    case OP_POOL2D_AVG:
-      return "AveragePool";
-    case OP_RELU:
-      return "Relu";
-    case OP_SIGMOID:
-      return "Sigmoid";
-    case OP_TANH:
-      return "TanH";
-    case OP_BATCHNORM:
-      return "Batchnorm";
-    case OP_CONCAT:
-      return "Concat";
-    case OP_SPLIT:
-      return "Split";
-    case OP_RESHAPE:
-      return "Reshape";
-    case OP_TRANSPOSE:
-      return "Transpose";
-    case OP_EW_ADD:
-      return "Add";
-    case OP_EW_MUL:
-      return "Mul";
-    case OP_MATMUL:
-      return "MatMul";
-    case OP_MUL:
-      return "Mul";
-    case OP_ENLARGE:
-      return "Enlarge";
-    case OP_SQUEEZE:
-      return "Squeeze";
-    case OP_UNSQUEEZE:
-      return "Unsqueeze";
-    case OP_EW_SUB:
-      return "Sub";
-    case OP_EW_DIV:
-      return "Div";
-    case OP_EW_EQUAL:
-      return "Equal";
-    case OP_EW_GREATER:
-      return "Greater";
-    case OP_EW_LESS:
-      return "Less";
-    case OP_EW_MAX:
-      return "Max";
-    case OP_EW_MIN:
-      return "Min";
-    case OP_REDUCE_ARGMAX:
-      return "ArgMax";
-    case OP_REDUCE_ARGMIN:
-      return "ArgMin";
-    case OP_REDUCE_MAX:
-      return "ReduceMax";
-    case OP_REDUCE_MEAN:
-      return "ReduceMean";
-    case OP_REDUCE_MIN:
-      return "ReduceMin";
-    case OP_REDUCE_PROD:
-      return "ReduceProd";
-    case OP_REDUCE_SUM:
-      return "ReduceSum";
-    case OP_PAD:
-      return "Pad";
-    case OP_SHAPE:
-      return "Shape";
-    case OP_SIZE:
-      return "Size";
-    case OP_TOPK:
-      return "TopK";
-    case OP_WHERE:
-      return "Where";
-    case OP_CEIL:
-      return "Ceil";
-    case OP_CAST:
-      return "Cast";
-    case OP_EXP:
-      return "Exp";
-    case OP_ROUND:
-      return "Round";
-    case OP_LOG:
-      return "Log";
-    case OP_LOGICAL_NOT:
-      return "Not";
-    case OP_SQRT:
-      return "Sqrt";
-    case OP_LEAKYRELU:
-      return "LeakyRelu";
-    case OP_SLICE:
-      return "Slice";
-    case OP_RESIZE:
-      return "Resize";
-    default:
-      return "Unknown_" + std::to_string(ptr->type);
+namespace std {
+  std::string to_string(OpType const &opType) {
+    switch (opType) {
+      case OP_INPUT:
+        return "Input";
+      case OP_WEIGHT:
+        return "Weight";
+      case OP_ANY:
+        return "Any";
+      case OP_CONV2D:
+        return "Conv";
+      case OP_DROPOUT:
+        return "Dropout";
+      case OP_LINEAR:
+        return "Linear";
+      case OP_POOL2D_MAX:
+        return "MaxPool";
+      case OP_POOL2D_AVG:
+        return "AveragePool";
+      case OP_RELU:
+        return "Relu";
+      case OP_SIGMOID:
+        return "Sigmoid";
+      case OP_TANH:
+        return "TanH";
+      case OP_BATCHNORM:
+        return "Batchnorm";
+      case OP_CONCAT:
+        return "Concat";
+      case OP_SPLIT:
+        return "Split";
+      case OP_RESHAPE:
+        return "Reshape";
+      case OP_TRANSPOSE:
+        return "Transpose";
+      case OP_EW_ADD:
+        return "Add";
+      case OP_EW_MUL:
+        return "Mul";
+      case OP_MATMUL:
+        return "MatMul";
+      case OP_MUL:
+        return "Mul";
+      case OP_ENLARGE:
+        return "Enlarge";
+      case OP_SQUEEZE:
+        return "Squeeze";
+      case OP_UNSQUEEZE:
+        return "Unsqueeze";
+      case OP_EW_SUB:
+        return "Sub";
+      case OP_EW_DIV:
+        return "Div";
+      case OP_EW_EQUAL:
+        return "Equal";
+      case OP_EW_GREATER:
+        return "Greater";
+      case OP_EW_LESS:
+        return "Less";
+      case OP_EW_MAX:
+        return "Max";
+      case OP_EW_MIN:
+        return "Min";
+      case OP_REDUCE_ARGMAX:
+        return "ArgMax";
+      case OP_REDUCE_ARGMIN:
+        return "ArgMin";
+      case OP_REDUCE_MAX:
+        return "ReduceMax";
+      case OP_REDUCE_MEAN:
+        return "ReduceMean";
+      case OP_REDUCE_MIN:
+        return "ReduceMin";
+      case OP_REDUCE_PROD:
+        return "ReduceProd";
+      case OP_REDUCE_SUM:
+        return "ReduceSum";
+      case OP_PAD:
+        return "Pad";
+      case OP_SHAPE:
+        return "Shape";
+      case OP_SIZE:
+        return "Size";
+      case OP_TOPK:
+        return "TopK";
+      case OP_WHERE:
+        return "Where";
+      case OP_CEIL:
+        return "Ceil";
+      case OP_CAST:
+        return "Cast";
+      case OP_EXP:
+        return "Exp";
+      case OP_ROUND:
+        return "Round";
+      case OP_LOG:
+        return "Log";
+      case OP_LOGICAL_NOT:
+        return "Not";
+      case OP_SQRT:
+        return "Sqrt";
+      case OP_LEAKYRELU:
+        return "LeakyRelu";
+      case OP_SLICE:
+        return "Slice";
+      case OP_RESIZE:
+        return "Resize";
+      default:
+        return "Unknown_" + std::to_string((int)opType);
+    }
   }
+}
+
+std::string Op::op_to_string(const OpBase* ptr) const
+{
+  return std::to_string(ptr->type);
 }
 
 static Model* model_singleton = NULL;
@@ -389,7 +399,7 @@ TensorHandle Graph::new_weight(int ndim, const int* dims, const DATATYPE* weight
   int total_size = sizeof(DATATYPE);
   for (int i = 0; i < ndim; i++)
     total_size *= dims[i];
-  weight_ptr = (DATATYPE*) model->allocate_memory(total_size, weight_initial);
+  /* weight_ptr = (DATATYPE*) model->allocate_memory(total_size, weight_initial); */
   TensorHandle t = new Tensor(ndim, dims, GUID_WEIGHT, weight_ptr);
   t = weight_wrapper(t);
   return t;
@@ -401,29 +411,34 @@ TensorHandle Graph::new_weight(const Tensor& weight)
   t->op.guid = GUID_WEIGHT;
   t->op.ptr = NULL;
   t->idx = 0;
-  t->data_ptr = (DATATYPE*) model->allocate_memory(
-      weight.volume() * sizeof(DATATYPE), (DATATYPE*) weight.data_ptr);
+  t->data_ptr = NULL;
+  /* t->data_ptr = (DATATYPE*) model->allocate_memory( */
+  /*     weight.volume() * sizeof(DATATYPE), (DATATYPE*) weight.data_ptr); */
   t = weight_wrapper(t);
   return t;
 }
 
 Graph* Graph::optimize(float alpha, int budget, bool print_subst)
 {
+  flexflow::FFHandler handler;
+  flexflow::FFConfig ffconfig;
+  handler.init();
+  flexflow::Simulator sim(ffconfig, handler);
   std::vector<GraphXfer*> xfers;
   for (int i = 1; i < 3; i++)
     for (int j = 0; j < 2; j++) {
       PaddingMode pad_mode = (j == 0) ? PD_MODE_SAME : PD_MODE_VALID;
-      xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode));
-      xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode));
-      xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode));
+      /* xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode)); */
+      /* xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode)); */
+      /* xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode)); */
       //xfers.push_back(GraphXfer::create_conv_add(model, i, i, pad_mode));
     }
-  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU));
+  /* xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE)); */
+  /* xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU)); */
+  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE)); */
+  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU)); */
+  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE)); */
+  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU)); */
 
   //xfers.push_back(create_avg_pool_conv(model));
   //xfers.push_back(create_two_pools(model));
@@ -449,11 +464,11 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   candidates.push(this);
   hashmap.insert(hash());
   Graph *bestGraph = this;
-  float bestCost = total_cost();
+  float bestCost = total_cost(&sim);
   //printf("MetaFlow Cost = %.4lfms\n", bestCost);
   //printf("Input graph: end-to-end execution time =\n"
   //       "%.8lf ms (average of 100 runs)\n", run());
-  print_costs();
+  /* print_costs(); */
 
   int counter = 0;
   int maxNumOps = inEdges.size();
@@ -463,10 +478,11 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   printf("\n        ===== Start Cost-Based Backtracking Search =====\n");
   while (!candidates.empty()) {
     Graph *subGraph = candidates.top();
+    printf("Sub graph has %d nodes\n", subGraph->inEdges.size());
     candidates.pop();
-    if (subGraph->total_cost() < bestCost) {
+    if (subGraph->total_cost(&sim) < bestCost) {
       delete bestGraph;
-      bestCost = subGraph->total_cost();
+      bestCost = subGraph->total_cost(&sim);
       bestGraph = subGraph;
     }
     if (counter >= budget) {
@@ -474,35 +490,37 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
       break;
     }
     if (counter % 1 == 0) {
-      printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu\n", counter, subGraph->total_cost(), bestCost, candidates.size());
+      printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu\n", counter, subGraph->total_cost(&sim), bestCost, candidates.size());
       //timer_fs << microsecond_timer() - start_time << ", " << bestCost << std::endl;
     }
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
-      //for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) {
-      //  printf("srcOps[%zu]: type(%d)\n", j, xfers[i]->srcOps[j]->type);
-      //}
-      //for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) {
-      //  printf("dstOps[%zu]: type(%d)\n", j, xfers[i]->dstOps[j]->type);
-      //}
-      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps);
+      for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) {
+        std::cout << "srcOps[" << j << "]: type(" << std::to_string(xfers[i]->srcOps[j]->type) << ")" << std::endl;
+      }
+      for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) {
+        std::cout << "dstOps[" << j << "]: type(" << std::to_string(xfers[i]->dstOps[j]->type) << ")" << std::endl;
+      }
+      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps, &sim);
     }
     if (bestGraph != subGraph) {
       delete subGraph;
     }
   }
-  bestGraph = bestGraph->preprocess_weights();
+  /* bestGraph = bestGraph->preprocess_weights(); */
   printf("        ===== Finish Cost-Based Backtracking Search =====\n\n");
+  printf("Best graph cost found: %f\n", bestGraph->total_cost());
   //printf("bestCost = %.4lf\n", bestGraph->total_cost());
   //printf("Optimized graph: end-to-end execution time =\n");
   //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run());
-  std::unique_ptr<std::ofstream> dotfile = std::unique_ptr<std::ofstream>(new std::ofstream());
-  dotfile->open("/home/users/unger/FlexFlow/flexflowified.dot");
-  flexflow::FFConfig ffconfig;
+  auto dotfileIn = std::unique_ptr<std::ofstream>(new std::ofstream());
+  auto dotfileOut = std::unique_ptr<std::ofstream>(new std::ofstream());
+  dotfileIn->open("/home/users/unger/TASO/build/cpp_examples/tasoified.dot");
+  dotfileOut->open("/home/users/unger/TASO/build/cpp_examples/flexflowified.dot");
   Converter c(ffconfig, *bestGraph);
-  c.convert(std::move(dotfile));
+  c.convert(std::move(dotfileIn), std::move(dotfileOut));
 
-  bestGraph->print_costs();
+  /* bestGraph->print_costs(); */
   if (print_subst) {
     printf("        ===== Applied Substitutions =====\n\n");
     for (size_t i = 0; i < bestGraph->subst_history.size(); i++) {
@@ -519,120 +537,120 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   return bestGraph;
 }
 
-std::vector<Graph *> Graph::optimizeMulti(float alpha, int budget, bool print_subst, int numResults) {
-  std::vector<GraphXfer*> xfers;
-  for (int i = 1; i < 3; i++)
-    for (int j = 0; j < 2; j++) {
-      PaddingMode pad_mode = (j == 0) ? PD_MODE_SAME : PD_MODE_VALID;
-      xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode));
-      xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode));
-      xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode));
-      //xfers.push_back(GraphXfer::create_conv_add(model, i, i, pad_mode));
-    }
-  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE));
-  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU));
+/* std::vector<Graph *> Graph::optimizeMulti(float alpha, int budget, bool print_subst, int numResults) { */
+/*   std::vector<GraphXfer*> xfers; */
+/*   for (int i = 1; i < 3; i++) */
+/*     for (int j = 0; j < 2; j++) { */
+/*       PaddingMode pad_mode = (j == 0) ? PD_MODE_SAME : PD_MODE_VALID; */
+/*       xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode)); */
+/*       xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode)); */
+/*       xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode)); */
+/*       //xfers.push_back(GraphXfer::create_conv_add(model, i, i, pad_mode)); */
+/*     } */
+/*   xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE)); */
+/*   xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU)); */
+/*   xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE)); */
+/*   xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU)); */
+/*   xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE)); */
+/*   xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU)); */
 
-  //xfers.push_back(create_avg_pool_conv(model));
-  //xfers.push_back(create_two_pools(model));
-  //xfers.push_back(create_merge_seperable_convs(model));
-  char* taso_path = getenv("TASO_HOME");
-  if (taso_path == NULL) {
-    fprintf(stderr, "Error: environment variable TASO_HOME is not set. "
-           "Please set TASO_HOME to the home directory of TASO source code.\n");
-    assert(false);
-  }
-  std::string graph_subst_file = std::string(taso_path) + "/graph_subst.pb";
-  GraphXfer::load_graph_xfer_from_pb_file(model, xfers, graph_subst_file);
-  //xfers.push_back(create_fuse_conv_batch_xfer(model));
-  //xfers.push_back(create_fuse_conv_relu_xfer(model));
-  //xfers.push_back(create_merge_conv_xfer(model));
-  //xfers.push_back(create_exclusive_concat_xfer(model));
-  //xfers.push_back(create_enlarge_conv_xfer(model));
-  //xfers.push_back(create_resnet_merge_xfer(model));
+/*   //xfers.push_back(create_avg_pool_conv(model)); */
+/*   //xfers.push_back(create_two_pools(model)); */
+/*   //xfers.push_back(create_merge_seperable_convs(model)); */
+/*   char* taso_path = getenv("TASO_HOME"); */
+/*   if (taso_path == NULL) { */
+/*     fprintf(stderr, "Error: environment variable TASO_HOME is not set. " */
+/*            "Please set TASO_HOME to the home directory of TASO source code.\n"); */
+/*     assert(false); */
+/*   } */
+/*   std::string graph_subst_file = std::string(taso_path) + "/graph_subst.pb"; */
+/*   GraphXfer::load_graph_xfer_from_pb_file(model, xfers, graph_subst_file); */
+/*   //xfers.push_back(create_fuse_conv_batch_xfer(model)); */
+/*   //xfers.push_back(create_fuse_conv_relu_xfer(model)); */
+/*   //xfers.push_back(create_merge_conv_xfer(model)); */
+/*   //xfers.push_back(create_exclusive_concat_xfer(model)); */
+/*   //xfers.push_back(create_enlarge_conv_xfer(model)); */
+/*   //xfers.push_back(create_resnet_merge_xfer(model)); */
 
-  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
-  std::set<size_t> hashmap;
-  BoundedPriorityQueue<Graph *, std::vector<Graph*>, GraphCompare> topN(numResults);
-  candidates.push(this);
-  hashmap.insert(hash());
-  float bestCost = total_cost();
-  //printf("MetaFlow Cost = %.4lfms\n", bestCost);
-  //printf("Input graph: end-to-end execution time =\n"
-  //       "%.8lf ms (average of 100 runs)\n", run());
-  print_costs();
+/*   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates; */
+/*   std::set<size_t> hashmap; */
+/*   BoundedPriorityQueue<Graph *, std::vector<Graph*>, GraphCompare> topN(numResults); */
+/*   candidates.push(this); */
+/*   hashmap.insert(hash()); */
+/*   float bestCost = total_cost(sim); */
+/*   //printf("MetaFlow Cost = %.4lfms\n", bestCost); */
+/*   //printf("Input graph: end-to-end execution time =\n" */
+/*   //       "%.8lf ms (average of 100 runs)\n", run()); */
+/*   print_costs(); */
 
-  int counter = 0;
-  int maxNumOps = inEdges.size();
-  //long long start_time = microsecond_timer();
-  ofstream timer_fs;
-  timer_fs.open("timer.txt");
-  printf("\n        ===== Start Cost-Based Backtracking Search =====\n");
-  Graph *evicted;
-  bool shouldDelete;
-  while (!candidates.empty()) {
-    printf("Yo here\n");
-    Graph *subGraph = candidates.top();
-    candidates.pop();
-    bestCost = min(bestCost, subGraph->total_cost());
-    if (counter % 2 == 0) {
-      shouldDelete = topN.push(subGraph, &evicted);
-    } else {
-      evicted = subGraph;
-      shouldDelete = true;
-    }
+/*   int counter = 0; */
+/*   int maxNumOps = inEdges.size(); */
+/*   //long long start_time = microsecond_timer(); */
+/*   ofstream timer_fs; */
+/*   timer_fs.open("timer.txt"); */
+/*   printf("\n        ===== Start Cost-Based Backtracking Search =====\n"); */
+/*   Graph *evicted; */
+/*   bool shouldDelete; */
+/*   while (!candidates.empty()) { */
+/*     printf("Yo here\n"); */
+/*     Graph *subGraph = candidates.top(); */
+/*     candidates.pop(); */
+/*     bestCost = min(bestCost, subGraph->total_cost(sim)); */
+/*     if (counter % 2 == 0) { */
+/*       shouldDelete = topN.push(subGraph, &evicted); */
+/*     } else { */
+/*       evicted = subGraph; */
+/*       shouldDelete = true; */
+/*     } */
 
-    if (counter > budget) {
-      // TODO: free all remaining candidates when budget exhausted
-      break;
-    }
-    if (counter % 1 == 0) {
-      printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu topN.size() = %zu\n", counter, subGraph->total_cost(), bestCost, candidates.size(), topN.size());
-      //timer_fs << microsecond_timer() - start_time << ", " << bestCost << std::endl;
-    }
-    counter ++;
-    for (size_t i = 0; i < xfers.size(); i++) {
-      //for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) {
-      //  printf("srcOps[%zu]: type(%d)\n", j, xfers[i]->srcOps[j]->type);
-      //}
-      //for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) {
-      //  printf("dstOps[%zu]: type(%d)\n", j, xfers[i]->dstOps[j]->type);
-      //}
-      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps);
-    }
-    if (shouldDelete) {
-      delete evicted;
-    }
-  }
-  std::vector<Graph *> processed;
-  while (!topN.empty()) {
-    fprintf(stderr, "Adding dude\n");
-    auto topCandidate = topN.pop();
-    processed.push_back(topCandidate->preprocess_weights());
-  }
-  printf("        ===== Finish Cost-Based Backtracking Search =====\n\n");
-  //printf("bestCost = %.4lf\n", bestGraph->total_cost());
-  //printf("Optimized graph: end-to-end execution time =\n");
-  //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run());
-  /* bestGraph->print_costs(); */
-  /* if (print_subst) { */
-  /*   printf("        ===== Applied Substitutions =====\n\n"); */
-  /*   for (size_t i = 0; i < bestGraph->subst_history.size(); i++) { */
-  /*     printf("        substitution[%03zu]: \n", i); */
-  /*     Graph::GraphSubst subst = bestGraph->subst_history[i]; */
-  /*     for (size_t j = 0; j < subst.srcOps.size(); j++) { */
-  /*       printf("            srcOp[%zu]: %s\n", j, subst.srcOps[j].to_string().c_str()); */
-  /*     } */
-  /*     for (size_t j = 0; j < subst.dstOps.size(); j++) { */
-  /*       printf("            dstOp[%zu]: %s\n", j, subst.dstOps[j].to_string().c_str()); */
-  /*     } */
-  /*   } */
-  /* } */
-  return processed;
-}
+/*     if (counter > budget) { */
+/*       // TODO: free all remaining candidates when budget exhausted */
+/*       break; */
+/*     } */
+/*     if (counter % 1 == 0) { */
+/*       printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu topN.size() = %zu\n", counter, subGraph->total_cost(sim), bestCost, candidates.size(), topN.size()); */
+/*       //timer_fs << microsecond_timer() - start_time << ", " << bestCost << std::endl; */
+/*     } */
+/*     counter ++; */
+/*     for (size_t i = 0; i < xfers.size(); i++) { */
+/*       //for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) { */
+/*       //  printf("srcOps[%zu]: type(%d)\n", j, xfers[i]->srcOps[j]->type); */
+/*       //} */
+/*       //for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) { */
+/*       //  printf("dstOps[%zu]: type(%d)\n", j, xfers[i]->dstOps[j]->type); */
+/*       //} */
+/*       xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps); */
+/*     } */
+/*     if (shouldDelete) { */
+/*       delete evicted; */
+/*     } */
+/*   } */
+/*   std::vector<Graph *> processed; */
+/*   while (!topN.empty()) { */
+/*     fprintf(stderr, "Adding dude\n"); */
+/*     auto topCandidate = topN.pop(); */
+/*     processed.push_back(topCandidate->preprocess_weights()); */
+/*   } */
+/*   printf("        ===== Finish Cost-Based Backtracking Search =====\n\n"); */
+/*   //printf("bestCost = %.4lf\n", bestGraph->total_cost()); */
+/*   //printf("Optimized graph: end-to-end execution time =\n"); */
+/*   //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run()); */
+/*   /1* bestGraph->print_costs(); *1/ */
+/*   /1* if (print_subst) { *1/ */
+/*   /1*   printf("        ===== Applied Substitutions =====\n\n"); *1/ */
+/*   /1*   for (size_t i = 0; i < bestGraph->subst_history.size(); i++) { *1/ */
+/*   /1*     printf("        substitution[%03zu]: \n", i); *1/ */
+/*   /1*     Graph::GraphSubst subst = bestGraph->subst_history[i]; *1/ */
+/*   /1*     for (size_t j = 0; j < subst.srcOps.size(); j++) { *1/ */
+/*   /1*       printf("            srcOp[%zu]: %s\n", j, subst.srcOps[j].to_string().c_str()); *1/ */
+/*   /1*     } *1/ */
+/*   /1*     for (size_t j = 0; j < subst.dstOps.size(); j++) { *1/ */
+/*   /1*       printf("            dstOp[%zu]: %s\n", j, subst.dstOps[j].to_string().c_str()); *1/ */
+/*   /1*     } *1/ */
+/*   /1*   } *1/ */
+/*   /1* } *1/ */
+/*   return processed; */
+/* } */
 
 Graph* Graph::preprocess_weights(void)
 {
@@ -676,17 +694,17 @@ Graph* Graph::preprocess_weights(void)
         //assert(op.ptr->numOutputs == 1);
         // map and execute the operator to get the output weights
         for (it = list.begin(); it != list.end(); it++) {
-          assert(it->srcOp.ptr->outputs[it->srcIdx].data_ptr != NULL);
+          assert(it->srcOp.ptr->outputs[it->srcIdx].data_ptr == NULL);
           assert(op.ptr->inputs[it->dstIdx].has_same_shape_stride_split(
               it->srcOp.ptr->outputs[it->srcIdx]));
           op.ptr->inputs[it->dstIdx].data_ptr =
               it->srcOp.ptr->outputs[it->srcIdx].data_ptr;
         }
-        op.ptr->map();
-        op.ptr->forward(true/*block*/);
+        /* op.ptr->map(); */
+        //op.ptr->forward(true/*block*/);
         TensorHandle tensor = newGraph->new_weight(op.ptr->outputs[0]);
         newGraph->replace_node(op, tensor->op);
-        op.ptr->unmap();
+        /* op.ptr->unmap(); */
         newGraph->remove_node(op);
         change = true;
         break;
@@ -851,9 +869,9 @@ void Graph::get_weight_value(size_t guid, DATATYPE* value)
   assert(op.ptr->type == OP_WEIGHT);
   assert(op.ptr->numInputs == 1);
   assert(op.ptr->numOutputs == 1);
-  assert(op.ptr->inputs[0].data_ptr != NULL);
-  model->copy_memory(value, (DATATYPE*) op.ptr->inputs[0].data_ptr,
-      sizeof(DATATYPE) * op.ptr->inputs[0].volume());
+  assert(op.ptr->inputs[0].data_ptr == NULL);
+  /* model->copy_memory(value, (DATATYPE*) op.ptr->inputs[0].data_ptr, */
+  /*     sizeof(DATATYPE) * op.ptr->inputs[0].volume()); */
 }
 
 int Graph::get_output_dims(size_t guid, int* dims, int idx)
@@ -1234,16 +1252,98 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-float Graph::total_cost(void)
+float Graph::total_cost() {
+  assert (this->totalCost > 0);
+  return this->totalCost;
+}
+
+float Graph::total_cost(flexflow::Simulator *sim)
 {
-  if (totalCost > 0) return totalCost;
-  std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it;
-  float total = 0.0f;
-  for (it = inEdges.begin(); it != inEdges.end(); it++) {
-    if (it->first.ptr != NULL) total += it->first.ptr->runtime;
+  if (this->totalCost > 0) return this->totalCost;
+  flexflow::FFConfig ffconfig;
+  Converter c(ffconfig, *this);
+  c.convert();
+  flexflow::FFModel &ml = c.get_converted();
+  flexflow::FFModel *model = &ml;
+  int graphSize = 0;
+  std::set<Op> nodes;
+  for (auto const &kv : this->inEdges) {
+    nodes.insert(kv.first);
   }
-  totalCost = total;
-  return total;
+  for (auto const &kv : this->outEdges) {
+    nodes.insert(kv.first);
+  }
+  for (auto const &op : nodes) {
+    if (op.ptr != nullptr && op.ptr->type != OP_WEIGHT && op.ptr->type != OP_INPUT) {
+      graphSize++;
+    }
+  }
+  printf("Converted graph with %d nodes to one with %d nodes\n", graphSize, model->layers.size());
+  std::map<flexflow::Op*, flexflow::ParallelConfig> strategies;
+  for (size_t l = 0; l < model->layers.size(); l++) {
+    strategies[model->layers[l].get()] = model->layers[l]->get_data_parallel_config(*model);
+  }
+  this->totalCost = model->optimize(sim, strategies, ffconfig.search_budget, ffconfig.search_alpha);
+  return this->totalCost;
+  /* if (totalCost > 0) return totalCost; */
+  /* std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it; */
+  /* float total = 0.0f; */
+  /* for (it = inEdges.begin(); it != inEdges.end(); it++) { */
+  /*   if (it->first.ptr != NULL) total += it->first.ptr->runtime; */
+  /* } */
+  /* totalCost = total; */
+  /* return total; */
+}
+
+std::map<std::string, std::string> Op::to_dot() const {
+  std::map<std::string, std::string> attrs;
+  attrs["label"] = this->to_string();
+  return attrs;
+}
+
+void Graph::to_dot(std::unique_ptr<std::ostream> oss) const {
+  flexflow::DotFile<Op> dot(std::move(oss));
+  for (auto const &kv : this->inEdges) {
+    for (Edge const &inEdge : kv.second) {
+      dot.add_node(inEdge.srcOp, inEdge.srcOp.to_dot());
+      dot.add_node(inEdge.dstOp, inEdge.dstOp.to_dot());
+      dot.add_edge(inEdge.srcOp, inEdge.dstOp);
+    }
+  }
+}
+
+void Graph::to_filtered_dot(std::unique_ptr<std::ostream> oss) const {
+  flexflow::DotFile<Op> dot(std::move(oss));
+  for (auto const &kv : this->inEdges) {
+    for (Edge const &inEdge : kv.second) {
+      bool srcCond = inEdge.srcOp.ptr != NULL && inEdge.srcOp.ptr->type != OP_WEIGHT;
+      bool dstCond = inEdge.dstOp.ptr != NULL && inEdge.dstOp.ptr->type != OP_WEIGHT;
+      if (srcCond) {
+        dot.add_node(inEdge.srcOp, inEdge.srcOp.to_dot());
+      }
+      if (dstCond) {
+        dot.add_node(inEdge.dstOp, inEdge.dstOp.to_dot());
+      }
+      if (srcCond && dstCond) {
+        dot.add_edge(inEdge.srcOp, inEdge.dstOp);
+      }
+    }
+  }
+  for (auto const &kv : this->outEdges) {
+    for (Edge const &outEdge : kv.second) {
+      bool srcCond = outEdge.srcOp.ptr != NULL && outEdge.srcOp.ptr->type != OP_WEIGHT;
+      bool dstCond = outEdge.dstOp.ptr != NULL && outEdge.dstOp.ptr->type != OP_WEIGHT;
+      if (srcCond) {
+        dot.add_node(outEdge.srcOp, outEdge.srcOp.to_dot());
+      }
+      if (dstCond) {
+        dot.add_node(outEdge.dstOp, outEdge.dstOp.to_dot());
+      }
+      /* if (srcCond && dstCond) { */
+      /*   dot.add_edge(outEdge.srcOp, outEdge.dstOp); */
+      /* } */
+    }
+  }
 }
 
 bool Graph::has_loop(void)
@@ -1277,243 +1377,244 @@ bool Graph::has_loop(void)
   return (opList.size() < inEdges.size());
 }
 
-float Graph::run(void)
-{
-  std::map<Op, int, OpCompare> todos;
-  std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it;
-  std::vector<Op> opList;
-  std::vector<OpBase*> opBaseList;
-  for (it = inEdges.begin(); it != inEdges.end(); it++) {
-    int cnt = 0;
-    std::set<Edge, EdgeCompare> inList = it->second;
-    std::set<Edge, EdgeCompare>::const_iterator it2;
-    for (it2 = inList.begin(); it2 != inList.end(); it2++) {
-      if (it2->srcOp.guid > GUID_PRESERVED) cnt ++;
-    }
-    todos[it->first] = cnt;
-    if (todos[it->first] == 0)
-      opList.push_back(it->first);
-  }
-  size_t i = 0;
-  while (i < opList.size()) {
-    Op op = opList[i++];
-    std::set<Edge, EdgeCompare> outList = outEdges[op];
-    std::set<Edge, EdgeCompare> inList = inEdges[op];
-    std::set<Edge, EdgeCompare>::const_iterator it2;
-    assert(inList.size() > 0);
-    OpBase* opPtr = NULL;
-    // Step 1: prepare inputs
-    Tensor inputs[MAX_NUM_INPUTS];
-    if ((op.ptr->type == OP_INPUT) || (op.ptr->type == OP_WEIGHT)) {
-      assert(inList.size() == 1);
-      //Edge e = *inList.begin();
-      //assert(e.srcOp.ptr == NULL); // NoOp's input must not be any Op
-      Tensor t = op.ptr->inputs[0];
-      size_t size = sizeof(DATATYPE);
-      for (int j = 0; j < t.numDim; j++)
-        size *= t.dim[j];
-      if (op.ptr->type == OP_INPUT) {
-        assert(t.data_ptr == NULL);
-        t.data_ptr = (DATATYPE*) model->allocate_memory(size);
-      } else {
-        assert(t.data_ptr != NULL);
-      }
-      inputs[0] = t;
-    } else {
-      for (it2 = inList.begin(); it2 != inList.end(); it2++) {
-        size_t idx2 = 0;
-        for (idx2 = 0; idx2 < opList.size(); idx2++) {
-          if (opList[idx2].guid == it2->srcOp.guid) break;
-        }
-        assert(idx2 < i);
-        assert(inputs[it2->dstIdx].data_ptr == NULL); // No duplicated dstIdxes
-        inputs[it2->dstIdx] = opBaseList[idx2]->outputs[it2->srcIdx];
-      }
-    }
-#ifdef DEADCODE
-    // Step 1: prepare inputs
-    for (it2 = inList.begin(); it2 != inList.end(); it2++) {
-      Edge e = *it2;
-      if (e.srcOp.guid == GUID_INPUT) {
-        Tensor t = op.ptr->inputs[e.dstIdx];
-        t.ptr = (DATATYPE*) model->allocate_memory(sizeof(DATATYPE) * t.size());
-        assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes
-        inputs[e.dstIdx] = t;
-      } else if (e.srcOp.guid = GUID_WEIGHT) {
-        Tensor t = op.ptr->inputs[e.dstIdx];
-        t.ptr = (DATATYPE*) model->allocate_memory(sizeof(DATATYPE) * t.size());
-        assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes
-        inputs[e.dstIdx] = t;
-      } else {
-        size_t idx2 = 0;
-        for (idx2 = 0; idx2 < opList.size(); idx2++) {
-          if (opList[idx2].guid == e.srcOp.guid) break;
-        }
-        assert(idx2 < i);
-        assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes
-        inputs[e.dstIdx] = opBaseList[idx2]->outputs[it2->srcIdx];
-      }
-    }
-#endif
-    // Step 2: create Ops
-    switch (op.ptr->type) {
-      case OP_CONV2D:
-      {
-        Conv2D* conv = (Conv2D*) op.ptr;
-        assert(inList.size() == 2);
-        opPtr = new Conv2D(model, inputs[0], inputs[1],
-                           conv->strideH, conv->strideW,
-                           conv->padding, conv->activation);
-#ifdef USE_CUDNN
-        ((Conv2D*)opPtr)->fwdAlgo = conv->fwdAlgo;
-#endif
-        break;
-      }
-      case OP_MATMUL:
-      {
-        Matmul* matmul = (Matmul*) op.ptr;
-        assert(inList.size() == 2);
-        opPtr = new Matmul(model, inputs[0], inputs[1], matmul->activation);
-        break;
-      }
-      case OP_RESHAPE:
-      {
-        Reshape* reshape = (Reshape*) op.ptr;
-        assert(inList.size() == 1);
-        std::vector<int> shape;
-        for (int i = 0; i < reshape->outputs[0].numDim; i++)
-          shape.push_back(reshape->outputs[0].dim[i]);
-        opPtr = new Reshape(model, inputs[0], shape);
-        break;
-      }
-      case OP_TRANSPOSE:
-      {
-        Transpose* transpose = (Transpose*) op.ptr;
-        assert(inList.size() == 1);
-        int ndim = inputs[0].numDim, permIdx = transpose->permIdx;
-        std::vector<int> permVec;
-        int permArray[MAX_DIM];
-        for (int i = ndim - 1; i >= 0; i--) {
-          permArray[i] = permIdx % ndim;
-          permIdx = permIdx / ndim;
-        }
-        assert(permIdx == 0);
-        for (int i = 0; i < ndim; i++)
-          for (int j = i + 1; j < ndim; j++)
-            assert(permArray[i] != permArray[j]);
-        for (int i = 0; i < ndim; i++)
-          permVec.push_back(permArray[i]);
-        opPtr = new Transpose(model, inputs[0], permVec, transpose->shuffle);
-        break;
-      }
-      case OP_EW_ADD:
-      case OP_EW_MUL:
-      {
-        //Element* element = (Element*) op.ptr;
-        assert(inList.size() == 2);
-        opPtr = new Element(model, op.ptr->type, inputs[0], inputs[1]);
-        break;
-      }
-      case OP_ENLARGE:
-      {
-        //Enlarge* enlarge = (Enlarge*) op.ptr;
-        assert(inList.size() == 2);
-        opPtr = new Enlarge(model, inputs[0], inputs[1]);
-        break;
-      }
-      case OP_MERGE_GCONV:
-      {
-        MergeGConv* merge = (MergeGConv*) op.ptr;
-        assert(inList.size() == 1);
-        opPtr = new MergeGConv(model, inputs[0], merge->count);
-        break;
-      }
-      case OP_POOL2D_MAX:
-      case OP_POOL2D_AVG:
-      {
-        Pool2D* pool = (Pool2D*) op.ptr;
-        assert(inList.size() == 2);
-        opPtr = new Pool2D(model, inputs[0], inputs[1], pool->type,
-                           pool->kernelH, pool->kernelW,
-                           pool->strideH, pool->strideW,
-                           pool->padding, pool->activation);
-        break;
-      }
-      case OP_RELU:
-      case OP_SIGMOID:
-      case OP_TANH:
-      {
-        Activation* act = (Activation*) op.ptr;
-        assert(inList.size() == 1);
-        opPtr = new Activation(model, inputs[0], act->type, act->inPlace);
-        break;
-      }
-      case OP_BATCHNORM:
-      {
-        assert(inList.size() == 5);
-        BatchNorm* batchnorm = (BatchNorm*) op.ptr;
-        opPtr = new BatchNorm(model, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], batchnorm->epsilon);
-        break;
-      }
-      case OP_SPLIT:
-      {
-        Split* split = (Split*) op.ptr;
-        assert(inList.size() == 1);
-        opPtr = new Split(model, inputs[0], split->axis, split->sizes);
-        break;
-      }
-      case OP_INPUT:
-      case OP_WEIGHT:
-      case OP_DROPOUT:
-      {
-        assert(inList.size() == 1);
-        opPtr = new NoOp(model, inputs[0], op.ptr->type);
-        break;
-      }
-      case OP_CONCAT:
-      {
-        Concat* concat = (Concat*) op.ptr;
-        opPtr = new Concat(model, concat->axis, inList.size(), inputs, concat->needCopy);
-        break;
-      }
-      default:
-        printf("op.type = %d\n", op.ptr->type);
-        assert(false);
-    }
-    // Step 3: map new Op
-    opPtr->map();
-    opBaseList.push_back(opPtr);
-    for (it2 = outList.begin(); it2 != outList.end(); it2++) {
-      todos[it2->dstOp] --;
-      //printf("myOp(%zu) dstOp(%zu) dstType(%d) dstTodos(%d)\n",
-      //    it2->srcOp.guid, it2->dstOp.guid,
-      //    it2->dstOp.ptr->type, todos[it2->dstOp]);
-      if (todos[it2->dstOp] == 0) {
-        opList.push_back(it2->dstOp);
-      }
-    }
-  }
-#ifdef VERBOSE_PRINTS
-  for (int i =0; i < opList.size(); i++) {
-    printf("opList[%d]: guid(%zu) type(%d)\n", i, opList[i].guid,
-           opList[i].ptr->type);
-  }
-  for (it = inEdges.begin(); it != inEdges.end(); it++) {
-    printf("op: guid(%zu) type(%d)\n", it->first.guid, it->first.ptr->type);
-    std::set<Edge, EdgeCompare> inList = it->second;
-    std::set<Edge, EdgeCompare>::const_iterator it2;
-    int cnt = 0;
-    for (it2 = inList.begin(); it2 != inList.end(); it2++) {
-      printf("    inEdge[%d]: srcOp(%zu) srcIdx(%d) dstOp(%zu) dstIdx(%d)\n", cnt++, it2->srcOp.guid, it2->srcIdx, it2->dstOp.guid, it2->dstIdx);
-    }
-  }
-#endif
+/* float Graph::run(void) */
+/* { */
+/*   std::map<Op, int, OpCompare> todos; */
+/*   std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it; */
+/*   std::vector<Op> opList; */
+/*   std::vector<OpBase*> opBaseList; */
+/*   for (it = inEdges.begin(); it != inEdges.end(); it++) { */
+/*     int cnt = 0; */
+/*     std::set<Edge, EdgeCompare> inList = it->second; */
+/*     std::set<Edge, EdgeCompare>::const_iterator it2; */
+/*     for (it2 = inList.begin(); it2 != inList.end(); it2++) { */
+/*       if (it2->srcOp.guid > GUID_PRESERVED) cnt ++; */
+/*     } */
+/*     todos[it->first] = cnt; */
+/*     if (todos[it->first] == 0) */
+/*       opList.push_back(it->first); */
+/*   } */
+/*   size_t i = 0; */
+/*   while (i < opList.size()) { */
+/*     Op op = opList[i++]; */
+/*     std::set<Edge, EdgeCompare> outList = outEdges[op]; */
+/*     std::set<Edge, EdgeCompare> inList = inEdges[op]; */
+/*     std::set<Edge, EdgeCompare>::const_iterator it2; */
+/*     assert(inList.size() > 0); */
+/*     OpBase* opPtr = NULL; */
+/*     // Step 1: prepare inputs */
+/*     Tensor inputs[MAX_NUM_INPUTS]; */
+/*     if ((op.ptr->type == OP_INPUT) || (op.ptr->type == OP_WEIGHT)) { */
+/*       assert(inList.size() == 1); */
+/*       //Edge e = *inList.begin(); */
+/*       //assert(e.srcOp.ptr == NULL); // NoOp's input must not be any Op */
+/*       Tensor t = op.ptr->inputs[0]; */
+/*       size_t size = sizeof(DATATYPE); */
+/*       for (int j = 0; j < t.numDim; j++) */
+/*         size *= t.dim[j]; */
+/*       if (op.ptr->type == OP_INPUT) { */
+/*         assert(t.data_ptr == NULL); */
+/*         t.data_ptr = NULL; */
+/*         /1* t.data_ptr = (DATATYPE*) model->allocate_memory(size); *1/ */
+/*       } else { */
+/*         assert(t.data_ptr == NULL); */
+/*       } */
+/*       inputs[0] = t; */
+/*     } else { */
+/*       for (it2 = inList.begin(); it2 != inList.end(); it2++) { */
+/*         size_t idx2 = 0; */
+/*         for (idx2 = 0; idx2 < opList.size(); idx2++) { */
+/*           if (opList[idx2].guid == it2->srcOp.guid) break; */
+/*         } */
+/*         assert(idx2 < i); */
+/*         assert(inputs[it2->dstIdx].data_ptr == NULL); // No duplicated dstIdxes */
+/*         inputs[it2->dstIdx] = opBaseList[idx2]->outputs[it2->srcIdx]; */
+/*       } */
+/*     } */
+/* #ifdef DEADCODE */
+/*     // Step 1: prepare inputs */
+/*     for (it2 = inList.begin(); it2 != inList.end(); it2++) { */
+/*       Edge e = *it2; */
+/*       if (e.srcOp.guid == GUID_INPUT) { */
+/*         Tensor t = op.ptr->inputs[e.dstIdx]; */
+/*         t.ptr = (DATATYPE*) model->allocate_memory(sizeof(DATATYPE) * t.size()); */
+/*         assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes */
+/*         inputs[e.dstIdx] = t; */
+/*       } else if (e.srcOp.guid = GUID_WEIGHT) { */
+/*         Tensor t = op.ptr->inputs[e.dstIdx]; */
+/*         t.ptr = (DATATYPE*) model->allocate_memory(sizeof(DATATYPE) * t.size()); */
+/*         assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes */
+/*         inputs[e.dstIdx] = t; */
+/*       } else { */
+/*         size_t idx2 = 0; */
+/*         for (idx2 = 0; idx2 < opList.size(); idx2++) { */
+/*           if (opList[idx2].guid == e.srcOp.guid) break; */
+/*         } */
+/*         assert(idx2 < i); */
+/*         assert(inputs[e.dstIdx].ptr == NULL); // No duplicated dstIdxes */
+/*         inputs[e.dstIdx] = opBaseList[idx2]->outputs[it2->srcIdx]; */
+/*       } */
+/*     } */
+/* #endif */
+/*     // Step 2: create Ops */
+/*     switch (op.ptr->type) { */
+/*       case OP_CONV2D: */
+/*       { */
+/*         Conv2D* conv = (Conv2D*) op.ptr; */
+/*         assert(inList.size() == 2); */
+/*         opPtr = new Conv2D(model, inputs[0], inputs[1], */
+/*                            conv->strideH, conv->strideW, */
+/*                            conv->padding, conv->activation); */
+/* #ifdef USE_CUDNN */
+/*         ((Conv2D*)opPtr)->fwdAlgo = conv->fwdAlgo; */
+/* #endif */
+/*         break; */
+/*       } */
+/*       case OP_MATMUL: */
+/*       { */
+/*         Matmul* matmul = (Matmul*) op.ptr; */
+/*         assert(inList.size() == 2); */
+/*         opPtr = new Matmul(model, inputs[0], inputs[1], matmul->activation); */
+/*         break; */
+/*       } */
+/*       case OP_RESHAPE: */
+/*       { */
+/*         Reshape* reshape = (Reshape*) op.ptr; */
+/*         assert(inList.size() == 1); */
+/*         std::vector<int> shape; */
+/*         for (int i = 0; i < reshape->outputs[0].numDim; i++) */
+/*           shape.push_back(reshape->outputs[0].dim[i]); */
+/*         opPtr = new Reshape(model, inputs[0], shape); */
+/*         break; */
+/*       } */
+/*       case OP_TRANSPOSE: */
+/*       { */
+/*         Transpose* transpose = (Transpose*) op.ptr; */
+/*         assert(inList.size() == 1); */
+/*         int ndim = inputs[0].numDim, permIdx = transpose->permIdx; */
+/*         std::vector<int> permVec; */
+/*         int permArray[MAX_DIM]; */
+/*         for (int i = ndim - 1; i >= 0; i--) { */
+/*           permArray[i] = permIdx % ndim; */
+/*           permIdx = permIdx / ndim; */
+/*         } */
+/*         assert(permIdx == 0); */
+/*         for (int i = 0; i < ndim; i++) */
+/*           for (int j = i + 1; j < ndim; j++) */
+/*             assert(permArray[i] != permArray[j]); */
+/*         for (int i = 0; i < ndim; i++) */
+/*           permVec.push_back(permArray[i]); */
+/*         opPtr = new Transpose(model, inputs[0], permVec, transpose->shuffle); */
+/*         break; */
+/*       } */
+/*       case OP_EW_ADD: */
+/*       case OP_EW_MUL: */
+/*       { */
+/*         //Element* element = (Element*) op.ptr; */
+/*         assert(inList.size() == 2); */
+/*         opPtr = new Element(model, op.ptr->type, inputs[0], inputs[1]); */
+/*         break; */
+/*       } */
+/*       case OP_ENLARGE: */
+/*       { */
+/*         //Enlarge* enlarge = (Enlarge*) op.ptr; */
+/*         assert(inList.size() == 2); */
+/*         opPtr = new Enlarge(model, inputs[0], inputs[1]); */
+/*         break; */
+/*       } */
+/*       case OP_MERGE_GCONV: */
+/*       { */
+/*         MergeGConv* merge = (MergeGConv*) op.ptr; */
+/*         assert(inList.size() == 1); */
+/*         opPtr = new MergeGConv(model, inputs[0], merge->count); */
+/*         break; */
+/*       } */
+/*       case OP_POOL2D_MAX: */
+/*       case OP_POOL2D_AVG: */
+/*       { */
+/*         Pool2D* pool = (Pool2D*) op.ptr; */
+/*         assert(inList.size() == 2); */
+/*         opPtr = new Pool2D(model, inputs[0], inputs[1], pool->type, */
+/*                            pool->kernelH, pool->kernelW, */
+/*                            pool->strideH, pool->strideW, */
+/*                            pool->padding, pool->activation); */
+/*         break; */
+/*       } */
+/*       case OP_RELU: */
+/*       case OP_SIGMOID: */
+/*       case OP_TANH: */
+/*       { */
+/*         Activation* act = (Activation*) op.ptr; */
+/*         assert(inList.size() == 1); */
+/*         opPtr = new Activation(model, inputs[0], act->type, act->inPlace); */
+/*         break; */
+/*       } */
+/*       case OP_BATCHNORM: */
+/*       { */
+/*         assert(inList.size() == 5); */
+/*         BatchNorm* batchnorm = (BatchNorm*) op.ptr; */
+/*         opPtr = new BatchNorm(model, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], batchnorm->epsilon); */
+/*         break; */
+/*       } */
+/*       case OP_SPLIT: */
+/*       { */
+/*         Split* split = (Split*) op.ptr; */
+/*         assert(inList.size() == 1); */
+/*         opPtr = new Split(model, inputs[0], split->axis, split->sizes); */
+/*         break; */
+/*       } */
+/*       case OP_INPUT: */
+/*       case OP_WEIGHT: */
+/*       case OP_DROPOUT: */
+/*       { */
+/*         assert(inList.size() == 1); */
+/*         opPtr = new NoOp(model, inputs[0], op.ptr->type); */
+/*         break; */
+/*       } */
+/*       case OP_CONCAT: */
+/*       { */
+/*         Concat* concat = (Concat*) op.ptr; */
+/*         opPtr = new Concat(model, concat->axis, inList.size(), inputs, concat->needCopy); */
+/*         break; */
+/*       } */
+/*       default: */
+/*         printf("op.type = %d\n", op.ptr->type); */
+/*         assert(false); */
+/*     } */
+/*     // Step 3: map new Op */
+/*     /1* opPtr->map(); *1/ */
+/*     opBaseList.push_back(opPtr); */
+/*     for (it2 = outList.begin(); it2 != outList.end(); it2++) { */
+/*       todos[it2->dstOp] --; */
+/*       //printf("myOp(%zu) dstOp(%zu) dstType(%d) dstTodos(%d)\n", */
+/*       //    it2->srcOp.guid, it2->dstOp.guid, */
+/*       //    it2->dstOp.ptr->type, todos[it2->dstOp]); */
+/*       if (todos[it2->dstOp] == 0) { */
+/*         opList.push_back(it2->dstOp); */
+/*       } */
+/*     } */
+/*   } */
+/* #ifdef VERBOSE_PRINTS */
+/*   for (int i =0; i < opList.size(); i++) { */
+/*     printf("opList[%d]: guid(%zu) type(%d)\n", i, opList[i].guid, */
+/*            opList[i].ptr->type); */
+/*   } */
+/*   for (it = inEdges.begin(); it != inEdges.end(); it++) { */
+/*     printf("op: guid(%zu) type(%d)\n", it->first.guid, it->first.ptr->type); */
+/*     std::set<Edge, EdgeCompare> inList = it->second; */
+/*     std::set<Edge, EdgeCompare>::const_iterator it2; */
+/*     int cnt = 0; */
+/*     for (it2 = inList.begin(); it2 != inList.end(); it2++) { */
+/*       printf("    inEdge[%d]: srcOp(%zu) srcIdx(%d) dstOp(%zu) dstIdx(%d)\n", cnt++, it2->srcOp.guid, it2->srcIdx, it2->dstOp.guid, it2->dstIdx); */
+/*     } */
+/*   } */
+/* #endif */
 
-  assert(opList.size() == inEdges.size());
-  assert(opList.size() == opBaseList.size());
+/*   assert(opList.size() == inEdges.size()); */
+/*   assert(opList.size() == opBaseList.size()); */
 
-  return model->measure_oplist_runtime(opBaseList);
-}
+/*   return model->measure_oplist_runtime(opBaseList); */
+/* } */
 
 void Graph::print_costs(void)
 {

@@ -14,6 +14,7 @@
  */
 
 #include "taso/substitution.h"
+#include "flexflow/simulator.h"
 using namespace taso;
 
 GraphXfer* create_avg_pool_conv(Model* model)
@@ -391,7 +392,38 @@ void GraphXfer::load_graph_xfer_from_pb_file(Model* model,
       subst->map_output(subst->srcOps[srcOpId]->outputs[srcTsId],
                         subst->dstOps[dstOpId]->outputs[dstTsId]);
     }
-    xfers.push_back(subst);
+    bool isValid = true;
+    for (OpX *srcOp : subst->srcOps) {
+      switch (srcOp->type) {
+        case OP_CONV2D:
+        case OP_EW_ADD:
+        case OP_POOL2D_MAX:
+        case OP_POOL2D_AVG:
+        case OP_CONCAT:
+        case OP_RELU:
+        case OP_SPLIT:
+          break;
+        default:
+          isValid = false;
+      }
+    }
+    for (OpX *dstOp : subst->dstOps) {
+      switch (dstOp->type) {
+        case OP_CONV2D:
+        case OP_EW_ADD:
+        case OP_POOL2D_MAX:
+        case OP_POOL2D_AVG:
+        case OP_CONCAT:
+        case OP_RELU:
+        case OP_SPLIT:
+          break;
+        default:
+          isValid = false;
+      }
+    }
+    if (isValid) {
+      xfers.push_back(subst);
+    }
   }
 }
 
@@ -1085,7 +1117,7 @@ void GraphXfer::unmatch(OpX* srcOp, Op op, Graph* graph)
 
 void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
-                    std::set<size_t>& hashmap, float threshold, int maxNumOps)
+                    std::set<size_t>& hashmap, float threshold, int maxNumOps, flexflow::Simulator *sim)
 {
   //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
@@ -1125,7 +1157,7 @@ void GraphXfer::run(int depth, Graph* graph,
     }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
-    if (newGraph->total_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
+    if (newGraph->total_cost(sim) < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         candidates.push(newGraph);
@@ -1143,7 +1175,7 @@ void GraphXfer::run(int depth, Graph* graph,
         Op op = it->first;
         // Check mapOutput
         match(srcOp, op, graph);
-        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps);
+        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps, sim);
         unmatch(srcOp, op, graph);
       }
     }

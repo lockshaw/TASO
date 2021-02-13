@@ -42,7 +42,7 @@ Op Model::get_or_create_pad(const Tensor& _input,
     padOp = pad[key];
   } else {
     padOp = new Pad(this, _input, _pad_before, _pad_after, _pad_value);
-    measure_pad_cost(padOp);
+    /* measure_pad_cost(padOp); */
     pad[key] = padOp;
   }
   Op ret;

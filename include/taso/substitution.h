@@ -18,6 +18,11 @@
 #include "taso/ops.h"
 #include "rules.pb.h"
 #include <queue>
+
+namespace flexflow {
+  class Simulator;
+}
+
 namespace taso {
 
 enum Compare {
@@ -133,7 +138,9 @@ struct SubEdgeCompare {
 class GraphCompare {
 public:
   bool operator() (Graph* const &lhs, Graph* const &rhs) const {
-    return lhs->total_cost() > rhs->total_cost();
+    assert (lhs->totalCost > 0);
+    assert (rhs->totalCost > 0);
+    return lhs->totalCost > rhs->totalCost;
   }
 };
 
@@ -196,7 +203,7 @@ public:
   bool map_output(TensorX src, TensorX dst);
   void run(int depth, Graph* graph,
            std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
-           std::set<size_t>&, float threshold, int maxNumOps);
+           std::set<size_t>&, float threshold, int maxNumOps, flexflow::Simulator *sim);
   Graph* create_new_graph(Graph* graph);
   bool create_new_operator(const OpX* opx, Op& op);
 

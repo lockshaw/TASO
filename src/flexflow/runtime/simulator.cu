@@ -19,16 +19,16 @@
 
 using namespace flexflow;
 
-Simulator::Simulator(const FFModel* model,
+Simulator::Simulator(FFConfig const &config,
                      FFHandler _handler)
 : handler(_handler), offset(0), warmup_times(5), repeat_times(10)
 {
   // Allocate simulator memory
-  cudaMalloc(&base_ptr, model->config.simulator_work_space_size);
-  capacity = model->config.simulator_work_space_size;
+  cudaMalloc(&base_ptr, config.simulator_work_space_size);
+  capacity = config.simulator_work_space_size;
 
   float inter_gpu_bandwidth = 12 * 1024 * 1024.0f; /* B/ms*/
-  float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* B/ms*/
+  float inter_node_bandwidth = 12 * 1024 * 1024.0f / config.numNodes; /* B/ms*/
   float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
   size_t max_num_tasks = 1024 * 1024;
 
@@ -40,8 +40,8 @@ Simulator::Simulator(const FFModel* model,
   ele_unary_meta = new ElementUnaryMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
   concat_meta = new ConcatMeta(handler);
-  num_nodes = model->config.numNodes;
-  gpus_per_node = model->config.workersPerNode;
+  num_nodes = config.numNodes;
+  gpus_per_node = config.workersPerNode;
   total_num_gpus = num_nodes * gpus_per_node;
   // Create GPU compute device
   for (int i = 0; i < num_nodes; i++)

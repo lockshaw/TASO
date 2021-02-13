@@ -172,20 +172,20 @@ bool Split::get_int_parameter(PMParameter para, int* value)
   }
 }
 
-void Split::map(void)
-{
-  size_t offset = 0;
-  for (int i = 0; i < numOutputs; i++) {
-    outputs[i].data_ptr = (DATATYPE*)inputs[0].data_ptr + offset;
-    offset += outputs[i].dim[axis] * inputs[0].stride[axis];
-  }
-}
+/* void Split::map(void) */
+/* { */
+/*   size_t offset = 0; */
+/*   for (int i = 0; i < numOutputs; i++) { */
+/*     outputs[i].data_ptr = (DATATYPE*)inputs[0].data_ptr + offset; */
+/*     offset += outputs[i].dim[axis] * inputs[0].stride[axis]; */
+/*   } */
+/* } */
 
-void Split::unmap(void)
-{}
+/* void Split::unmap(void) */
+/* {} */
 
-void Split::forward(bool block)
-{}
+/* void Split::forward(bool block) */
+/* {} */
 
 void Split::collect_costs(float& exe_time, float& flops,
                           float& mem_acc, int& num_kernels)
@@ -199,13 +199,13 @@ void Split::collect_costs(float& exe_time, float& flops,
          numOutputs, 0.0f, exe_time);
 }
 
-void Model::measure_split_cost(Split* split)
-{
-  // We assume split cost is zero
-  split->runtime = 0;
-  if (print_cost)
-    printf("        measure[split]: cost(%.4lf)\n", split->runtime);
-}
+/* void Model::measure_split_cost(Split* split) */
+/* { */
+/*   // We assume split cost is zero */
+/*   split->runtime = 0; */
+/*   if (print_cost) */
+/*     printf("        measure[split]: cost(%.4lf)\n", split->runtime); */
+/* } */
 
 // key ordering is:
 // axis, n, sizes[0], ..., sizes[n-1], input

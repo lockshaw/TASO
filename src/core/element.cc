@@ -62,7 +62,7 @@ Op Model::get_or_create_element(OpType type,
     eleOp = element[key];
   } else {
     eleOp = new Element(this, type, t1, t2);
-    measure_element_cost(eleOp);
+    /* measure_element_cost(eleOp); */
     element[key] = eleOp;
   }
   Op ret;

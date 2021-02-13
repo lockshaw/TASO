@@ -63,11 +63,11 @@ ElementUnary::ElementUnary(FFModel& model,
 : Op(model, _op_type, name, x)
 {
   outputs[0].numDim = inputs[0].numDim;
-  printf("Op: %s\n", name);
-  for (int i = 0; i < outputs[0].numDim; i++) {
-    printf("%d ", inputs[0].adim[i]);;
-  }
-  printf("\n");
+  /* printf("Op: %s\n", name); */
+  /* for (int i = 0; i < outputs[0].numDim; i++) { */
+  /*   printf("%d ", inputs[0].adim[i]);; */
+  /* } */
+  /* printf("\n"); */
   for (int i = 0; i < outputs[0].numDim; i++) {
     outputs[0].adim[i] = inputs[0].adim[i];
   }

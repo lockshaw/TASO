@@ -52,16 +52,16 @@ Concat::Concat(FFModel& model,
     }
   numOutputs = 1;
   numWeights = 0;
-  printf("Op: %s\n", name);
-  printf("Input: ");
-  for (int i = 0; i < inputs[0].numDim; i++) {
-    printf("%d ", inputs[0].adim[i]);
-  }
-  printf("\nOutput: ");
-  for (int i = 0; i < outputs[0].numDim; i++) {
-    printf("%d ", outputs[0].adim[i]);
-  }
-  printf("\n");
+  /* printf("Op: %s\n", name); */
+  /* printf("Input: "); */
+  /* for (int i = 0; i < inputs[0].numDim; i++) { */
+  /*   printf("%d ", inputs[0].adim[i]); */
+  /* } */
+  /* printf("\nOutput: "); */
+  /* for (int i = 0; i < outputs[0].numDim; i++) { */
+  /*   printf("%d ", outputs[0].adim[i]); */
+  /* } */
+  /* printf("\n"); */
 }
 
 void Concat::init_meta(ConcatMeta *m) const

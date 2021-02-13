@@ -49,7 +49,7 @@ Op Model::get_or_create_batchnorm(const Tensor& _input,
     bnOp = batchnorm[key];
   } else {
     bnOp = new BatchNorm(this, _input, _scale, _bias, _mean, _var, _epsilon);
-    measure_batchnorm_cost(bnOp);
+    /* measure_batchnorm_cost(bnOp); */
     batchnorm[key] = bnOp;
   }
   Op ret;

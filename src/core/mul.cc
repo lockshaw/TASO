@@ -36,7 +36,7 @@ Op Model::get_or_create_mul(const Tensor& x,
     mulOp = mul[key];
   } else {
     mulOp = new Mul(this, x, y);
-    measure_mul_cost(mulOp);
+    /* measure_mul_cost(mulOp); */
     mul[key] = mulOp;
   }
   Op ret;

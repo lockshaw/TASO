@@ -62,7 +62,7 @@ Op Model::get_or_create_matmul(Tensor _input, Tensor _weight,
     matmulOp = matmul[key];
   } else {
     matmulOp = new Matmul(this, _input, _weight, _acti);
-    measure_matmul_cost(matmulOp);
+    /* measure_matmul_cost(matmulOp); */
     matmul[key] = matmulOp;
   }
   Op ret;

@@ -81,10 +81,10 @@ ElementBinary::ElementBinary(FFModel& model,
   assert(in1.numDim == in2.numDim);
   int dim = in1.numDim;
   outputs[0].numDim = in1.numDim;
-  printf("Op: %s\n", name);
-  for (int i = 0; i < dim; i++) {
-    printf("%d %d\n", in1.adim[i], in2.adim[i]);
-  }
+  /* printf("Op: %s\n", name); */
+  /* for (int i = 0; i < dim; i++) { */
+  /*   printf("%d %d\n", in1.adim[i], in2.adim[i]); */
+  /* } */
   for (int i = 0; i < dim; i++) {
     assert(in1.adim[i] == in2.adim[i]);
     outputs[0].adim[i] = in1.adim[i];

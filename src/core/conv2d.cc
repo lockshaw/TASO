@@ -136,7 +136,7 @@ Op Model::get_or_create_conv2d(Tensor _input, Tensor _weight,
   } else {
     convOp = new Conv2D(this, _input, _weight, _strideH, _strideW,
                         _padding, _activation);
-    measure_conv2d_cost(convOp);
+    /* measure_conv2d_cost(convOp); */
     conv2d[key] = convOp;
   }
   Op ret;

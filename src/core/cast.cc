@@ -34,7 +34,7 @@ Op Model::get_or_create_cast(const Tensor& _input, DataType _datatype)
     castOp = cast[key];
   } else {
     castOp = new Cast(this, _input, _datatype);
-    measure_cast_cost(castOp);
+    /* measure_cast_cost(castOp); */
     cast[key] = castOp;
   }
   Op ret;

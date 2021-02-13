@@ -42,7 +42,7 @@ file(GLOB_RECURSE TASO_SRCS
 list(APPEND TASO_SRCS ${PROTO_CPPS})
 
 file(GLOB_RECURSE TASO_CUDA_SRCS
-  src/cudnn/*.cu
+  # src/cudnn/*.cu
   src/flexflow/runtime/*.cu
   src/flexflow/ops/*.cu
   )
@@ -71,7 +71,7 @@ if (NOT "${USE_CUDA}" STREQUAL "OFF")
     list(APPEND TASO_SRCS ${TASO_CUDA_SRCS})
     include_directories(${CUDA_INCLUDE_DIRS})
     message(STATUS "CUDA_INCLUDE_DIR=" ${CUDA_INCLUDE_DIRS})
-    add_definitions(-DUSE_CUDNN)
+    # add_definitions(-DUSE_CUDNN)
     list(APPEND TASO_LINK_LIBS ${CUDA_CUDART_LIBRARY})
     list(APPEND TASO_LINK_LIBS ${CUDA_CUDA_LIBRARY})
     list(APPEND TASO_LINK_LIBS ${CUDA_CUDNN_LIBRARY})

@@ -65,7 +65,7 @@ Op Model::get_or_create_elementwise_unary(const Tensor& _input, OpType _type)
     unaryOp = element_unary[key];
   } else {
     unaryOp = new ElementWiseUnary(this, _input, _type);
-    measure_elementwise_unary_cost(unaryOp);
+    /* measure_elementwise_unary_cost(unaryOp); */
     element_unary[key] = unaryOp;
   }
   Op ret;

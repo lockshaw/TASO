@@ -60,20 +60,20 @@ Linear::Linear(FFModel& model,
     weights[1].adim[0] = out_channels;
     numWeights = 2;
   }
-  printf("Op: %s\n", name);
-  printf("Input: ");
-  for (int i = 0; i < _input.numDim; i++) {
-    printf("%d ", _input.adim[i]);
-  }
-  printf("\nOutput: ");
-  for (int i = 0; i < outputs[0].numDim; i++) {
-    printf("%d ", outputs[0].adim[i]);
-  }
-  printf("\nWeights: ");
-  for (int i = 0; i < weights[0].numDim; i++) {
-    printf("%d ", weights[0].adim[i]);
-  }
-  printf("\n");
+  /* printf("Op: %s\n", name); */
+  /* printf("Input: "); */
+  /* for (int i = 0; i < _input.numDim; i++) { */
+  /*   printf("%d ", _input.adim[i]); */
+  /* } */
+  /* printf("\nOutput: "); */
+  /* for (int i = 0; i < outputs[0].numDim; i++) { */
+  /*   printf("%d ", outputs[0].adim[i]); */
+  /* } */
+  /* printf("\nWeights: "); */
+  /* for (int i = 0; i < weights[0].numDim; i++) { */
+  /*   printf("%d ", weights[0].adim[i]); */
+  /* } */
+  /* printf("\n"); */
 }
 
 /*static*/

@@ -58,7 +58,7 @@ Op Model::get_or_create_concat(int axis, int n, Tensor* _inputs, bool* _needCopy
     concatOp = concat[key];
   } else {
     concatOp = new Concat(this, axis, n, _inputs, _needCopy);
-    measure_concat_cost(concatOp);
+    /* measure_concat_cost(concatOp); */
     concat[key] = concatOp;
   }
   Op ret;

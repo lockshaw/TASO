@@ -2,6 +2,7 @@
 #define _LEGION_CNN_HELPER_H_
 #include <cudnn.h>
 #include "flexflow/legion_mock.h"
+#include <sstream>
 
 using namespace Legion;
 
