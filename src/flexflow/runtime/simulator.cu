@@ -43,6 +43,7 @@ Simulator::Simulator(FFConfig const &config,
   num_nodes = config.numNodes;
   gpus_per_node = config.workersPerNode;
   total_num_gpus = num_nodes * gpus_per_node;
+  verbose = config.simulationVerbose;
   // Create GPU compute device
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {

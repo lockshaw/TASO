@@ -32,7 +32,6 @@ void Converter::convert(std::unique_ptr<std::ostream> ossIn, std::unique_ptr<std
     /* if (kv.first.ptr != NULL && kv.first.ptr->type == taso::OP_INPUT) { */
       for (taso::Edge const &edge : kv.second) {
         if (edge.dstOp.ptr->type != taso::OP_INPUT && edge.dstOp.ptr->type != taso::OP_WEIGHT) {
-          assert(edge.dstOp.ptr->type != taso::OP_ENLARGE);
           to_convert.push_back(edge.dstOp);
         }
       }
@@ -41,33 +40,37 @@ void Converter::convert(std::unique_ptr<std::ostream> ossIn, std::unique_ptr<std
   taso::Op current;
   bool ready;
   while (!to_convert.empty()) {
-    printf("The queue has %d items\n", to_convert.size());
+    /* printf("The queue has %d items\n", to_convert.size()); */
     current = to_convert.front();
     to_convert.pop_front();
     auto find_result = graph.inEdges.find(current);
     assert (find_result != graph.inEdges.end());
     ready = true;
-    printf("Are we ready?\n");
-    printf("We have %d in edges to examine\n", find_result->second.size());
+    /* printf("Are we ready?\n"); */
+    /* printf("We have %d in edges to examine\n", find_result->second.size()); */
     for (taso::Edge const &edge : find_result->second) {
-      printf("Examining edge with srcOp id %d and srcOp ptr %p and srcOp type %d\n", edge.srcOp.guid, edge.srcOp.ptr, edge.srcOp.ptr ? edge.srcOp.ptr->type : -1);
-      if (edge.srcOp.guid != taso::GUID_WEIGHT && edge.srcOp.guid != taso::GUID_INPUT && edge.srcOp.ptr->type != taso::OP_INPUT && edge.srcOp.ptr->type != taso::OP_WEIGHT && this->opMap.find(edge.srcOp) == this->opMap.end()) {
+      /* printf("Examining edge with srcOp id %d and srcOp ptr %p and srcOp type %d\n", edge.srcOp.guid, edge.srcOp.ptr, edge.srcOp.ptr ? edge.srcOp.ptr->type : -1); */
+      if (edge.srcOp.guid != taso::GUID_WEIGHT
+          && edge.srcOp.guid != taso::GUID_INPUT
+          && edge.srcOp.ptr->type != taso::OP_INPUT
+          && edge.srcOp.ptr->type != taso::OP_WEIGHT
+          && this->opMap.find(edge.srcOp) == this->opMap.end()) {
         ready = false;
-        printf("No we are not!\n");
+        /* printf("No we are not!\n"); */
         break;
       }
     }
     if (ready) {
-      printf("Yes we are!\n");
+      /* printf("Yes we are!\n"); */
     }
     if (!ready) {
       continue;
     } else {
-      printf("Converting node with id %d and ptr %p\n", current.guid, current.ptr);
+      /* printf("Converting node with id %d and ptr %p\n", current.guid, current.ptr); */
       bool didConvert = this->convertOp(current);
       assert (this->opMap.find(current) != this->opMap.end());
       if (didConvert) {
-        printf("Adding the destinations of the %d outEdges\n", graph.outEdges[current].size());
+        /* printf("Adding the destinations of the %d outEdges\n", graph.outEdges[current].size()); */
         for (taso::Edge const &outEdge : graph.outEdges[current]) {
           to_convert.push_back(outEdge.dstOp);
         }
@@ -84,8 +87,8 @@ bool Converter::convertOp(taso::Op const &op) {
   if (result == this->opMap.end()) {
     this->rawConvertOp(op);
     this->opMap[op] = model.layers.back().get();
-    printf("Inserting converted op with id %d and ptr %p\n", op.guid, op.ptr);
-    printf("The op map now has %d items\n", this->opMap.size());
+    /* printf("Inserting converted op with id %d and ptr %p\n", op.guid, op.ptr); */
+    /* printf("The op map now has %d items\n", this->opMap.size()); */
     return true;
   }
   return false;
@@ -110,7 +113,7 @@ void Converter::rawConvertOp(taso::Op const &op) {
       int padH, padW, groups;
       p->get_padding(&padH, &padW);
       p->get_int_parameter(taso::PM_GROUP, &groups);
-      printf("Creating convolution layer with input channels %d and groups %d\n", t_inputs[0].dim[1], groups);
+      /* printf("Creating convolution layer with input channels %d and groups %d\n", t_inputs[0].dim[1], groups); */
       model.conv2d(
         inputs[0],
         t_outputs[0].dim[1],
@@ -181,7 +184,7 @@ void Converter::rawConvertOp(taso::Op const &op) {
       return;
     }
     default:
-      assert(false && "Unknown op type in conversion");
+      throw std::runtime_error("Unknown op type " + taso::op_type_name(op.ptr->type) + " in conversion");
   }
 }
 

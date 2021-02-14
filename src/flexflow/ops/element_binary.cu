@@ -315,8 +315,10 @@ bool ElementBinary::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-         name, sub_output.get_volume(), forward_time, backward_time);
+  if (sim->verbose) {
+    printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+           name, sub_output.get_volume(), forward_time, backward_time);
+  }
 
   return true;
 }

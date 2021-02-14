@@ -558,7 +558,9 @@ float FFModel::optimize(Simulator* simulator,
                        size_t budget, float alpha) const
 {
   // Start from data parallel
-  printf("Running simulator for model with %d nodes\n", best.size());
+  if (simulator->verbose) {
+    printf("Running simulator for model with %d nodes\n", best.size());
+  }
   std::map<Op*, ParallelConfig> current, next;
   float best_runtime = simulator->simulate_runtime(this, best);
   current = best;
@@ -566,7 +568,7 @@ float FFModel::optimize(Simulator* simulator,
   for (size_t iter = 0; iter < budget; iter++) {
     rewrite(current, next);
     float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 100 == 0) {
+    if (iter % 100 == 0 && simulator->verbose) {
       printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
              current_runtime, next_runtime, best_runtime);
     }
@@ -585,26 +587,30 @@ float FFModel::optimize(Simulator* simulator,
       current_runtime = next_runtime;
     }
   }
-  printf("=========== Best Discovered Strategy ==========\n");
-  simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
-  std::map<Op*, ParallelConfig>::const_iterator it;
-  for (it = best.begin(); it != best.end(); it++) {
-    printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
-    for (int i = 0; i < it->second.nDims; i++)
-      if (i < it->second.nDims - 1)
-        printf("%d,", it->second.dim[i]);
-      else
-        printf("%d", it->second.dim[i]);
-    printf("] device_ids[");
-    for (int i = 0; i < it->second.num_parts(); i++)
-      if (i < it->second.num_parts() - 1)
-        printf("%d,", it->second.device_ids[i]);
-      else
-        printf("%d", it->second.device_ids[i]);
-    printf("]\n");
+  if (simulator->verbose) {
+    printf("=========== Best Discovered Strategy ==========\n");
   }
-  printf("============= MCMC Search Finished ============\n\n");
-  printf("Best runtime: %f\n", best_runtime);
+  simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
+  if (simulator->verbose) {
+    std::map<Op*, ParallelConfig>::const_iterator it;
+    for (it = best.begin(); it != best.end(); it++) {
+      printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
+      for (int i = 0; i < it->second.nDims; i++)
+        if (i < it->second.nDims - 1)
+          printf("%d,", it->second.dim[i]);
+        else
+          printf("%d", it->second.dim[i]);
+      printf("] device_ids[");
+      for (int i = 0; i < it->second.num_parts(); i++)
+        if (i < it->second.num_parts() - 1)
+          printf("%d,", it->second.device_ids[i]);
+        else
+          printf("%d", it->second.device_ids[i]);
+      printf("]\n");
+    }
+    printf("============= MCMC Search Finished ============\n\n");
+    printf("Best runtime: %f\n", best_runtime);
+  }
   return best_runtime;
 }
 
@@ -720,6 +726,7 @@ struct DefaultConfig {
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
+  const static bool simulationVerbose = false;
 };
 
 FFConfig::FFConfig()
@@ -741,6 +748,7 @@ FFConfig::FFConfig()
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+  simulationVerbose = DefaultConfig::simulationVerbose;
 
   import_strategy_file = "";
   export_strategy_file = "";

@@ -137,6 +137,7 @@ namespace flexflow {
     std::string dataset_path;
     std::string import_strategy_file;
     std::string export_strategy_file;
+    bool simulationVerbose;
     // We use MappingTagID as the key since we will pass the tag to the mapper
     std::map<MappingTagID, ParallelConfig> strategies;
   };

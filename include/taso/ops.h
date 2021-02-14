@@ -141,6 +141,8 @@ enum OpType {
   OP_BROADCAST_ADD
 };
 
+std::string op_type_name(OpType const &);
+
 struct Op {
   Op(void);
   Op(size_t _guid, OpBase* _ptr)

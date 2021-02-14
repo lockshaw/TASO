@@ -248,8 +248,8 @@ bool OpBase::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value)
   return true;
 }
 
-namespace std {
-  std::string to_string(OpType const &opType) {
+namespace taso {
+  std::string op_type_name(OpType const &opType) {
     switch (opType) {
       case OP_INPUT:
         return "Input";
@@ -355,8 +355,10 @@ namespace std {
         return "Slice";
       case OP_RESIZE:
         return "Resize";
+      case OP_MERGE_GCONV:
+        return "MergeGConv";
       default:
-        return "Unknown_" + std::to_string((int)opType);
+        return "Unknown_" + std::to_string(opType);
     }
   }
 }
@@ -428,17 +430,17 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   for (int i = 1; i < 3; i++)
     for (int j = 0; j < 2; j++) {
       PaddingMode pad_mode = (j == 0) ? PD_MODE_SAME : PD_MODE_VALID;
-      /* xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode)); */
-      /* xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode)); */
-      /* xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode)); */
+      xfers.push_back(GraphXfer::create_conv_relu(model, i, i, pad_mode));
+      xfers.push_back(GraphXfer::create_conv_batch(model, i, i, pad_mode));
+      xfers.push_back(GraphXfer::create_conv_mul(model, i, i, pad_mode));
       //xfers.push_back(GraphXfer::create_conv_add(model, i, i, pad_mode));
     }
   /* xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_NONE)); */
   /* xfers.push_back(GraphXfer::create_enlarge_merge_convs(model, AC_MODE_RELU)); */
-  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE)); */
-  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU)); */
-  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE)); */
-  /* xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU)); */
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_NONE));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 1, 1, AC_MODE_RELU));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_NONE));
+  xfers.push_back(GraphXfer::create_merge_group_convs(model, 2, 2, AC_MODE_RELU));
 
   //xfers.push_back(create_avg_pool_conv(model));
   //xfers.push_back(create_two_pools(model));
@@ -476,9 +478,10 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
   ofstream timer_fs;
   timer_fs.open("timer.txt");
   printf("\n        ===== Start Cost-Based Backtracking Search =====\n");
+  printf("Considering %d substitutions\n", xfers.size());
   while (!candidates.empty()) {
     Graph *subGraph = candidates.top();
-    printf("Sub graph has %d nodes\n", subGraph->inEdges.size());
+    /* printf("Sub graph has %d nodes\n", subGraph->inEdges.size()); */
     candidates.pop();
     if (subGraph->total_cost(&sim) < bestCost) {
       delete bestGraph;
@@ -489,20 +492,20 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
       // TODO: free all remaining candidates when budget exhausted
       break;
     }
+    for (size_t i = 0; i < xfers.size(); i++) {
+      /* for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) { */
+      /*   std::cout << "srcOps[" << j << "]: type(" << std::to_string(xfers[i]->srcOps[j]->type) << ")" << std::endl; */
+      /* } */
+      /* for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) { */
+      /*   std::cout << "dstOps[" << j << "]: type(" << std::to_string(xfers[i]->dstOps[j]->type) << ")" << std::endl; */
+      /* } */
+      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps, &sim);
+    }
     if (counter % 1 == 0) {
       printf("        [%d] cost = %.4lf bestCost = %.4lf candidates.size() = %zu\n", counter, subGraph->total_cost(&sim), bestCost, candidates.size());
       //timer_fs << microsecond_timer() - start_time << ", " << bestCost << std::endl;
     }
     counter ++;
-    for (size_t i = 0; i < xfers.size(); i++) {
-      for (size_t j = 0; j < xfers[i]->srcOps.size(); j++) {
-        std::cout << "srcOps[" << j << "]: type(" << std::to_string(xfers[i]->srcOps[j]->type) << ")" << std::endl;
-      }
-      for (size_t j = 0; j < xfers[i]->dstOps.size(); j++) {
-        std::cout << "dstOps[" << j << "]: type(" << std::to_string(xfers[i]->dstOps[j]->type) << ")" << std::endl;
-      }
-      xfers[i]->run(0, subGraph, candidates, hashmap, bestCost * alpha, 2 * maxNumOps, &sim);
-    }
     if (bestGraph != subGraph) {
       delete subGraph;
     }

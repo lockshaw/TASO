@@ -393,34 +393,34 @@ void GraphXfer::load_graph_xfer_from_pb_file(Model* model,
                         subst->dstOps[dstOpId]->outputs[dstTsId]);
     }
     bool isValid = true;
-    for (OpX *srcOp : subst->srcOps) {
-      switch (srcOp->type) {
-        case OP_CONV2D:
-        case OP_EW_ADD:
-        case OP_POOL2D_MAX:
-        case OP_POOL2D_AVG:
-        case OP_CONCAT:
-        case OP_RELU:
-        case OP_SPLIT:
-          break;
-        default:
-          isValid = false;
-      }
-    }
-    for (OpX *dstOp : subst->dstOps) {
-      switch (dstOp->type) {
-        case OP_CONV2D:
-        case OP_EW_ADD:
-        case OP_POOL2D_MAX:
-        case OP_POOL2D_AVG:
-        case OP_CONCAT:
-        case OP_RELU:
-        case OP_SPLIT:
-          break;
-        default:
-          isValid = false;
-      }
-    }
+    /* for (OpX *srcOp : subst->srcOps) { */
+    /*   switch (srcOp->type) { */
+    /*     case OP_CONV2D: */
+    /*     case OP_EW_ADD: */
+    /*     case OP_POOL2D_MAX: */
+    /*     case OP_POOL2D_AVG: */
+    /*     case OP_CONCAT: */
+    /*     case OP_RELU: */
+    /*     case OP_SPLIT: */
+    /*       break; */
+    /*     default: */
+    /*       isValid = false; */
+    /*   } */
+    /* } */
+    /* for (OpX *dstOp : subst->dstOps) { */
+    /*   switch (dstOp->type) { */
+    /*     case OP_CONV2D: */
+    /*     case OP_EW_ADD: */
+    /*     case OP_POOL2D_MAX: */
+    /*     case OP_POOL2D_AVG: */
+    /*     case OP_CONCAT: */
+    /*     case OP_RELU: */
+    /*     case OP_SPLIT: */
+    /*       break; */
+    /*     default: */
+    /*       isValid = false; */
+    /*   } */
+    /* } */
     if (isValid) {
       xfers.push_back(subst);
     }
@@ -1163,6 +1163,7 @@ void GraphXfer::run(int depth, Graph* graph,
         candidates.push(newGraph);
       }
     } else {
+      printf("Candidate rejected because total cost %lf is above threshold %lf\n", newGraph->total_cost(sim), threshold);
       delete newGraph;
     }
   } else {
