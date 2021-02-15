@@ -94,6 +94,13 @@ namespace flexflow {
   bool save_strategies_to_file(const std::string& filename,
                                const std::map<std::string, ParallelConfig>& strategies);
 
+  enum class SimulationVerbosity {
+    SILENT = 1,
+    PROGRESS_ONLY = 2,
+    CACHE_STATS = 3,
+    ALL = 4,
+  };
+
   class FFConfig {
   public:
     enum PreservedIDs{
@@ -137,7 +144,7 @@ namespace flexflow {
     std::string dataset_path;
     std::string import_strategy_file;
     std::string export_strategy_file;
-    bool simulationVerbose;
+    SimulationVerbosity simulationVerbosity;
     // We use MappingTagID as the key since we will pass the tag to the mapper
     std::map<MappingTagID, ParallelConfig> strategies;
   };

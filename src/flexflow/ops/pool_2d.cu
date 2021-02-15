@@ -175,7 +175,7 @@ bool Pool2D::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  if (sim->verbose) {
+  if (sim->verbosity >= SimulationVerbosity::ALL) {
     printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         input_n, input_c, input_h, input_w,

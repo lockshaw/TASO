@@ -1163,7 +1163,6 @@ void GraphXfer::run(int depth, Graph* graph,
         candidates.push(newGraph);
       }
     } else {
-      printf("Candidate rejected because total cost %lf is above threshold %lf\n", newGraph->total_cost(sim), threshold);
       delete newGraph;
     }
   } else {

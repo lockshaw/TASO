@@ -34,7 +34,7 @@ TensorHandle resnext_block(Graph* graph, const TensorHandle input, int strideH, 
 
 Graph* resnext50(float alpha, int budget, bool printSubst = false) {
   Graph *graph = new Graph();
-  auto inp = new_input(graph, { 1, 3, 224, 224 });
+  auto inp = new_input(graph, { 32, 3, 224, 224 });
   auto weight = new_random_weight(graph, { 64, 3, 7, 7 });
   auto t = graph->conv2d(inp, weight, 2, 2, PD_MODE_SAME, AC_MODE_RELU);
   t = graph->pool2d_max(t, 3, 3, 2, 2, PD_MODE_SAME);

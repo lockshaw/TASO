@@ -46,6 +46,7 @@ using DNNLNet = std::vector<std::pair<dnnl::primitive, std::unordered_map<int, d
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <set>
 using namespace std;
 
 namespace flexflow {
@@ -675,6 +676,7 @@ public:
   /* float run(); */
   void print_costs(void);
   void print_measurements(void);
+  std::set<Op> get_all_nodes() const;
 #ifdef TRT
   void buildTRTNetwork(INetworkDefinition *network);
 private:

@@ -60,7 +60,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x,
                            const char* name)
-: Op(model, _op_type, name, x)
+: Op(model, _op_type, name, x), op_type(_op_type)
 {
   outputs[0].numDim = inputs[0].numDim;
   /* printf("Op: %s\n", name); */
@@ -243,7 +243,7 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  if (sim->verbose) {
+  if (sim->verbosity >= SimulationVerbosity::ALL) {
     printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
            name, sub_output.get_volume(), forward_time, backward_time);
   }

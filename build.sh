@@ -13,7 +13,7 @@ make -j6 VERBOSE=1
 RUN="${RUN:-none}"
 case "$RUN" in
   test)
-    "$DIR/build/test/run_tests"
+    gdb -ex 'catch throw; run' --args "$DIR/build/test/run_tests" --break --abort
     ;;
   example)
     cd "$DIR/build/cpp_examples"

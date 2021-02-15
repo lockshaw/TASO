@@ -365,7 +365,7 @@ namespace taso {
 
 std::string Op::op_to_string(const OpBase* ptr) const
 {
-  return std::to_string(ptr->type);
+  return op_type_name(ptr->type);
 }
 
 static Model* model_singleton = NULL;
@@ -386,6 +386,17 @@ Graph::Graph()
 void Graph::print_measurements(void)
 {
   model->print_cost = true;
+}
+
+std::set<Op> Graph::get_all_nodes() const {
+  std::set<Op> allNodes;
+  for (auto const &kv : this->inEdges) {
+    allNodes.insert(kv.first);
+  }
+  for (auto const &kv : this->outEdges) {
+    allNodes.insert(kv.first);
+  }
+  return allNodes;
 }
 
 TensorHandle Graph::new_input(int ndim, const int* dims)
@@ -510,9 +521,10 @@ Graph* Graph::optimize(float alpha, int budget, bool print_subst)
       delete subGraph;
     }
   }
-  /* bestGraph = bestGraph->preprocess_weights(); */
+
+  bestGraph = bestGraph->preprocess_weights();
   printf("        ===== Finish Cost-Based Backtracking Search =====\n\n");
-  printf("Best graph cost found: %f\n", bestGraph->total_cost());
+  printf("Best graph cost found: %f\n", bestGraph->total_cost(&sim));
   //printf("bestCost = %.4lf\n", bestGraph->total_cost());
   //printf("Optimized graph: end-to-end execution time =\n");
   //printf("%.8lf ms (average of 100 runs)\n", bestGraph->run());
@@ -1158,7 +1170,7 @@ void Graph::export_op(ofstream &file_stream, Op &op)
       break;
     }
     default:
-      assert(false);
+      throw std::runtime_error("Unknown op type " + taso::op_type_name(op.ptr->type) + " in export");
   }
   file_stream << std::endl;
 }
@@ -1263,30 +1275,55 @@ float Graph::total_cost() {
 float Graph::total_cost(flexflow::Simulator *sim)
 {
   if (this->totalCost > 0) return this->totalCost;
+  srand(100);
+  Graph copy = *this;
+  Graph *g = copy.preprocess_weights();
+  size_t hash = std::hash<Graph>()(*g);
+  auto iter = sim->seen_graphs.find(hash);
+  if (iter != sim->seen_graphs.end()) {
+    assert (false);
+    std::cout << "Observed a redundant graph!" << std::endl;
+    this->totalCost = iter->second;
+    return iter->second;
+  } else {
+    std::cout << "Observed a novel graph!" << std::endl;
+  }
+  std::cout << "Invoking the simulator" << std::endl;
+  std::cout << "Simulator has " << sim->hash_to_op_forward_time.size() << " profiles saved" << std::endl;
   flexflow::FFConfig ffconfig;
-  Converter c(ffconfig, *this);
+  Converter c(ffconfig, *g);
   c.convert();
   flexflow::FFModel &ml = c.get_converted();
   flexflow::FFModel *model = &ml;
   int graphSize = 0;
   std::set<Op> nodes;
-  for (auto const &kv : this->inEdges) {
+  for (auto const &kv : g->inEdges) {
     nodes.insert(kv.first);
   }
-  for (auto const &kv : this->outEdges) {
+  for (auto const &kv : g->outEdges) {
     nodes.insert(kv.first);
   }
   for (auto const &op : nodes) {
-    if (op.ptr != nullptr && op.ptr->type != OP_WEIGHT && op.ptr->type != OP_INPUT) {
+    if (op.ptr != nullptr && op.ptr->type != OP_WEIGHT && op.ptr->type != OP_INPUT && op.guid != GUID_WEIGHT && op.guid != GUID_INPUT) {
       graphSize++;
     }
   }
   printf("Converted graph with %d nodes to one with %d nodes\n", graphSize, model->layers.size());
+  /* if ( graphSize != model->layers.size()) { */
+  /*   auto dotfileIn = std::unique_ptr<std::ofstream>(new std::ofstream()); */
+  /*   auto dotfileOut = std::unique_ptr<std::ofstream>(new std::ofstream()); */
+  /*   dotfileIn->open("/home/users/unger/TASO/build/cpp_examples/tasoified.dot"); */
+  /*   dotfileOut->open("/home/users/unger/TASO/build/cpp_examples/flexflowified.dot"); */
+  /*   this->to_filtered_dot(std::move(dotfileIn)); */
+  /*   ml.to_dot(std::move(dotfileOut)); */
+  /*   assert( false ); */
+  /* } */
   std::map<flexflow::Op*, flexflow::ParallelConfig> strategies;
   for (size_t l = 0; l < model->layers.size(); l++) {
     strategies[model->layers[l].get()] = model->layers[l]->get_data_parallel_config(*model);
   }
   this->totalCost = model->optimize(sim, strategies, ffconfig.search_budget, ffconfig.search_alpha);
+  sim->seen_graphs[hash] = this->totalCost;
   return this->totalCost;
   /* if (totalCost > 0) return totalCost; */
   /* std::map<Op, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it; */

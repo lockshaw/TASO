@@ -16,7 +16,8 @@
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
 #include "flexflow/legion_mock.h"
-#include "queue"
+#include "flexflow/hash_utils.h"
+#include <queue>
 
 using namespace Legion;
 using namespace flexflow;
@@ -286,12 +287,20 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 
 float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
-  hash = hash * 31 + std::hash<int>()(config.device_type);
-  hash = hash * 31 + std::hash<int>()(config.nDims);
+  if (cache_hits + cache_misses >= 10000) {
+    if (this->verbosity >= SimulationVerbosity::CACHE_STATS) {
+      printf("Hits: %lf%%, Misses: %lf%%\n", ((double)cache_hits) / 100.0, ((double)cache_misses) / 100.0);
+    }
+    this->cache_hits = 0;
+    this->cache_misses = 0;
+  }
+  size_t hash = std::hash<Op>()(*op);
+  hash_combine(hash, config.device_type);
+  hash_combine(hash, config.nDims);
   for (int i = 0; i < config.nDims; i++)
-    hash = hash * 31 + std::hash<int>()(config.dim[i]);
+    hash_combine(hash, config.dim[i]);
   if (hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end()) {
+    this->cache_misses++;
     float forward_time, backward_time;
     op->measure_compute_time(this, config, forward_time, backward_time);
     hash_to_op_forward_time[hash] = forward_time;
@@ -300,18 +309,27 @@ float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
     hash_to_op_backward_time[hash] = backward_time;
     return forward_time;
   } else {
+    this->cache_hits++;
     return hash_to_op_forward_time[hash];
   }
 }
 
 float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
-  hash = hash * 31 + std::hash<int>()(config.device_type);
-  hash = hash * 31 + std::hash<int>()(config.nDims);
+  if (cache_hits + cache_misses >= 10000) {
+    if (this->verbosity >= SimulationVerbosity::CACHE_STATS) {
+      printf("Hits: %lf%%, Misses: %lf%%\n", ((double)cache_hits) / 100.0, ((double)cache_misses) / 100.0);
+    }
+    this->cache_hits = 0;
+    this->cache_misses = 0;
+  }
+  size_t hash = std::hash<Op>()(*op);
+  hash_combine(hash, config.device_type);
+  hash_combine(hash, config.nDims);
   for (int i = 0; i < config.nDims; i++)
-    hash = hash * 31 + std::hash<int>()(config.dim[i]);
+    hash_combine(hash, config.dim[i]);
   if (hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end()) {
+    this->cache_misses++;
     float forward_time, backward_time;
     op->measure_compute_time(this, config, forward_time, backward_time);
     // Check consistency betwek forward and backward
@@ -320,6 +338,7 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
     hash_to_op_backward_time[hash] = backward_time;
     return backward_time;
   } else {
+    this->cache_hits++;
     return hash_to_op_backward_time[hash];
   }
 }

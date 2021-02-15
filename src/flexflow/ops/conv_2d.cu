@@ -316,7 +316,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     backward_time += perfResults[0].time;
   }
 
-  if (sim->verbose) {
+  if (sim->verbosity >= SimulationVerbosity::ALL) {
     printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
            name,
            input_n, input_c, input_h, input_w,

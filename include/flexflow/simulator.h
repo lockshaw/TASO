@@ -192,7 +192,8 @@ namespace flexflow {
     off_t offset;
     int warmup_times, repeat_times;
     int num_nodes, gpus_per_node, total_num_gpus;
-    bool verbose;
+    int cache_hits, cache_misses;
+    SimulationVerbosity verbosity;
     TaskManager* task_manager;
     cudaEvent_t start_event, end_event;
     std::map<int, Device*> id_to_compute_device;
@@ -202,6 +203,7 @@ namespace flexflow {
     std::map<size_t, Device*> ids_to_inter_node_comm_device;
     std::map<size_t, float> hash_to_op_forward_time;
     std::map<size_t, float> hash_to_op_backward_time;
+    std::map<size_t, float> seen_graphs;
   public:
     Conv2DMeta* conv2d_meta;
     LinearMeta* linear_meta;

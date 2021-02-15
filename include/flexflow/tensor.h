@@ -36,6 +36,7 @@ namespace flexflow {
                                OperatorType type);
     size_t get_volume() const;
     Domain get_domain() const;
+    size_t get_dim_hash() const;
     int numDim, adim[MAX_TENSOR_DIM];
     DataType data_type;
     // Describes the ownership of this tensor
