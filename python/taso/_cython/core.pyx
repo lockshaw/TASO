@@ -175,9 +175,6 @@ cdef class PyGraph:
     def print_measurements(self):
         self.p_graph.print_measurements()
 
-    def run_time(self):
-        return self.p_graph.run()
-
     def cost(self):
         return self.p_graph.total_cost()
 
@@ -540,20 +537,10 @@ cdef class PyGraph:
         t = ctypes.cast(<unsigned long long>handle, ctypes.c_void_p)
         return PyTensor(t)
 
-    def optimize(self, float alpha, int budget, bool print_subst):
-        cdef Graph* new_graph = self.p_graph.optimize(alpha, budget, print_subst)
+    def optimize(self, float alpha, int budget, int ff_budget, int num_gpus, bool print_subst):
+        cdef Graph* new_graph = self.p_graph.optimize(alpha, budget, ff_budget, num_gpus, print_subst)
         graph = ctypes.cast(<unsigned long long>new_graph, ctypes.c_void_p)
         return PyGraph(graph)
-
-    def optimize_multi(self, float alpha, int budget, bool print_subst, int numResults):
-        cdef vector[Graph*] results = self.p_graph.optimizeMulti(alpha, budget, print_subst, numResults)
-        cdef vector[Graph*].iterator it = results.begin()
-        graphs = list()
-        while it != results.end():
-            graph = ctypes.cast(<unsigned long long>deref(it), ctypes.c_void_p)
-            graphs.append(PyGraph(graph))
-            inc(it)
-        return graphs
 
     def hash(self):
         return self.p_graph.hash()

@@ -90,7 +90,8 @@ Transpose::Transpose(Model* _model, Tensor _input,
 : OpBase(_input, _model, OP_TRANSPOSE), shuffle(_shuffle)
 {
   assert(shuffle);
-  permIdx = permutation_to_index(_perm);
+  this->permutation = _perm;
+  this->permIdx = permutation_to_index(_perm);
   assert(_input.numDim == (int)_perm.size());
   numOutputs = 1;
   // set dims and strides

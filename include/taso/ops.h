@@ -46,11 +46,13 @@ using DNNLNet = std::vector<std::pair<dnnl::primitive, std::unordered_map<int, d
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <set>
 using namespace std;
 
 namespace flexflow {
   class FFModel;
   class Simulator;
+  class FFConfig;
 }
 
 namespace taso {
@@ -649,7 +651,7 @@ public:
 
   // Helper Functions for Cython
   Op find_op_or_fail(size_t guid);
-  Graph* optimize(float alpha, int budget, bool print_subst);
+  Graph* optimize(float alpha, int budget, int ff_budget, int num_gpus, bool print_subst);
   /* std::vector<Graph *> optimizeMulti(float alpha, int budget, bool print_subst, int numResults); */
   Graph* preprocess_weights(void);
   int get_operator_list(Op* opList, size_t maxNumOps);
@@ -668,13 +670,14 @@ public:
   void print(void);
   bool check_correctness(void);
   bool has_loop(void);
-  float total_cost(flexflow::Simulator *sim);
+  float total_cost(flexflow::Simulator *sim, flexflow::FFConfig const &config);
   float total_cost();
   void to_dot(std::unique_ptr<std::ostream> oss) const;
   void to_filtered_dot(std::unique_ptr<std::ostream> oss) const;
   /* float run(); */
   void print_costs(void);
   void print_measurements(void);
+  std::set<Op> get_all_nodes() const;
 #ifdef TRT
   void buildTRTNetwork(INetworkDefinition *network);
 private:
@@ -1026,6 +1029,8 @@ public:
   /* void map(void); */
   /* void unmap(void); */
   void collect_costs(float& exe_time, float& flops, float& mem_acc, int& num_kernels);
+public:
+  std::vector<int> shape;
 };
 
 class Resize : public OpBase {
@@ -1126,6 +1131,7 @@ public:
 public:
   int permIdx;
   bool shuffle;
+  std::vector<int> permutation;
 };
 
 class Unsqueeze : public OpBase {

@@ -900,9 +900,10 @@ def export_onnx(graph):
     output_guids = dict()
     graph_input_names = set()
     for op in opList:
+        # print('Exporting'
         mytype = graph.get_operator_type(op)
         inedges = graph.get_input_edges(op)
-        #print("op.guid={} mytype={} inedges={}".format(op['guid'], mytype, len(inedges)))
+        print("op.guid={} mytype={} inedges={}".format(op['guid'], mytype, len(inedges)))
         inputs = list()
         for e in inedges:
             intype = graph.get_operator_type(e['srcOp'])
@@ -919,10 +920,10 @@ def export_onnx(graph):
                     graph_input_names.add(tensor_name)
                     graph_inputs.append(helper.make_tensor_value_info(tensor_name,
                                         TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx'])))
-            if intype == 'Weight':
-                graph_initializers.append(helper.make_tensor(tensor_name,
-                                          TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx']),
-                                          graph.get_weight_value(e['srcOp'])))
+            # if intype == 'Weight':
+            #     graph_initializers.append(helper.make_tensor(tensor_name,
+            #                               TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx']),
+            #                               graph.get_weight_value(e['srcOp'])))
 
         # add a second input for Reshape
         if mytype == 'Reshape':
@@ -945,8 +946,8 @@ def export_onnx(graph):
     onnx_model = helper.make_model(onnx_graph, producer_name='TASO Optimized Model')
     return onnx_model
 
-def optimize(graph, alpha = 1.0, budget = 1000, print_subst = False):
-    return graph.optimize(alpha, budget, print_subst)
+def optimize(graph, alpha = 1.0, budget = 1000, ff_budget = 0, num_gpus = 1, print_subst = False):
+    return graph.optimize(alpha, budget, ff_budget, num_gpus, print_subst)
 
 def optimize_multi(graph, alpha = 1.0, budget = 1000, print_subst = False, numResults = 10):
     return graph.optimize_multi(alpha, budget, print_subst, numResults)

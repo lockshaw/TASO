@@ -48,7 +48,7 @@ def nas_node(graph, input, x):
         print(' '.join(map(str, [m.dim(d) for d in range(m.nDim)])))
     return graph.tanh(midt[6])
 
-DEFAULT_MODEL_PATH = Path("/home/groups/aaiken/unger/models/nasrnn")
+DEFAULT_MODEL_PATH = Path("/home/groups/aaiken/unger/models/nasrnn-2")
 
 if __name__ == "__main__":
     import argparse
@@ -60,17 +60,19 @@ if __name__ == "__main__":
     p.add_argument("--budget", "-b", default=100, type=int)
     p.add_argument("--alpha", default=1.05, type=float)
     p.add_argument("--debug-dir", "-d", type=Path, default=None)
+    p.add_argument("--ff-budget", default=0, type=int)
     args = p.parse_args()
     batch_size = args.batch_size
+    ff_budget = args.ff_budget
 
     graph = ts.new_graph()
     print('a')
     xs = list()
     print('b')
     for i in range(length):
-        xs.append(graph.new_input(dims=(batch_size, hidden_size), name=b"data"))
+        xs.append(graph.new_input(dims=(batch_size, hidden_size)))
     print('c')
-    state = graph.new_input(dims=(batch_size, hidden_size), name=b"state")
+    state = graph.new_input(dims=(batch_size, hidden_size))
     print('d')
     for i in range(length):
         state = nas_node(graph, state, xs[i])
@@ -92,11 +94,11 @@ if __name__ == "__main__":
         graph.export_to_file(str(debug_dir / "unoptimized.txt").encode())
     if args.export:
         onnx.checker.check_model(unoptimized_model)
-        onnx.save(unoptimized_model, str(args.output_dir / f"nasrnn_{batch_size}_unoptimized.onnx"))
-    _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, print_subst=args.print_subst)
+        onnx.save(unoptimized_model, str(args.output_dir / f"nasrnn-{args.budget}x{ff_budget}_{batch_size}_unoptimized.onnx"))
+    _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, ff_budget=ff_budget, print_subst=args.print_subst)
     if debug_dir is not None:
         _optimized_model.export_to_file(str(debug_dir / "optimized.txt").encode())
     if args.export:
         optimized_model = ts.export_onnx(_optimized_model)
-        onnx.save(optimized_model, str(args.output_dir / f"nasrnn_{batch_size}_optimized.onnx"))
+        onnx.save(optimized_model, str(args.output_dir / f"nasrnn-{args.budget}x{ff_budget}_{batch_size}_optimized.onnx"))
 

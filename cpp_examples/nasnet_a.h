@@ -104,7 +104,7 @@ Graph* nasnet_a(float alpha, int budget, bool printSubst = false) {
     outChannels *= 2;
     inp = reduction_cell(graph, prev, cur, outChannels);
   }
-  return graph->optimize(alpha, budget, printSubst);
+  return graph->optimize(alpha, budget, 0, 1, printSubst);
 }
 
 #endif

@@ -30,6 +30,7 @@ using namespace Legion;
 
 namespace flexflow {
 
+
   class FFModel;
   class Op;
   class DataLoader;
@@ -66,6 +67,7 @@ namespace flexflow {
     virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
     // Helper functions
     Parameter* get_parameter(int index);
+    virtual size_t param_hash() const = 0;
   public:
     OperatorType op_type;
     char name[MAX_OPNAME];
@@ -89,7 +91,7 @@ namespace flexflow {
 
   class FFModel {
   public:
-    FFModel(FFConfig &config);
+    FFModel(FFConfig const &config);
     // C++ APIs for constructing models
     // Add an exp layer
     Tensor exp(const Tensor& x,
@@ -274,6 +276,7 @@ namespace flexflow {
                          const float* in2_ptr,
                          float* in1_grad_ptr,
                          float* in2_grad_ptr);
+    size_t param_hash() const override;
   public:
     //IndexSpace task_is;
     OperatorType op_type;
@@ -308,7 +311,10 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
     static bool use_cudnn(OperatorType type);
+  public:
+    OperatorType op_type;
   };
 
   class Conv2DMeta : public OpMeta {
@@ -358,6 +364,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
   public:
     int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
     bool profiling, use_bias;
@@ -385,6 +392,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
   public:
     int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
     PoolType pool_type;
@@ -439,6 +447,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
     ParallelConfig get_random_parallel_config(const FFModel& ff) const override;
   public:
     int in_channels, out_channels;
@@ -478,6 +487,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
   public:
     int axis;
     bool profiling;
@@ -501,9 +511,30 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
   public:
     int axis;
     bool profiling;
+  };
+
+  class Reshape : public Op {
+  public:
+    Reshape(FFModel& model,
+            const Tensor& input,
+            const std::vector<int>& shape,
+            const char* name);
+
+    static void forward_kernel(const float* input_ptr,
+                               float* output_ptr,
+                               size_t num_elements);
+    static void backward_kernel(float* input_grad_ptr,
+                                const float* output_grad_ptr,
+                                size_t num_elements);
+    bool measure_compute_time(Simulator* sim,
+                              const ParallelConfig& pc,
+                              float& forward_time,
+                              float& backward_time);
+    size_t param_hash() const override;
   };
 
   class Flat : public Op {
@@ -522,6 +553,7 @@ namespace flexflow {
                               const ParallelConfig& pc,
                               float& forward_time,
                               float& backward_time);
+    size_t param_hash() const override;
 
     Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   };
@@ -529,6 +561,55 @@ namespace flexflow {
   class FlatMeta : public OpMeta {
   public:
     FlatMeta(FFHandler handle) : OpMeta(handle) {};
+  };
+
+  class TransposeMeta : public OpMeta {
+  public:
+    TransposeMeta(FFHandler handler) : OpMeta(handler) {};
+    int num_dim;
+    int perm[MAX_TENSOR_DIM];
+  };
+
+  class Transpose : public Op {
+  public:
+    Transpose(FFModel& model,
+              const Tensor& input,
+              const std::vector<int>& perm,
+              const char* name);
+    void init(const FFModel&);
+    void forward(const FFModel&);
+    void backward(const FFModel&);
+    void print_layer(const FFModel& model) {assert(0);}
+    void create_weights(FFModel& model);
+    void create_output_and_partition(FFModel& model);
+
+    size_t param_hash() const override;
+    void init_meta(TransposeMeta *m,
+                   Domain const &in_domain,
+                   Domain const &out_domain) const;
+    static void forward_kernel(const TransposeMeta* m,
+                               const float* input_ptr,
+                               float* output_ptr,
+                               Domain in_domain,
+                               Domain out_domain);
+    static void backward_kernel(const TransposeMeta* m,
+                                float* input_grad_ptr,
+                                const float* output_grad_ptr,
+                                Domain in_grad_domain,
+                                Domain out_grad_domain);
+    bool measure_compute_time(Simulator* sim,
+                              const ParallelConfig& pc,
+                              float& forward_time,
+                              float& backward_time);
+  public:
+    int perm[MAX_TENSOR_DIM];
+  };
+}
+
+namespace std {
+  template<>
+  struct hash<flexflow::Op> {
+    size_t operator()(flexflow::Op const &) const;
   };
 }
 

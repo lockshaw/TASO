@@ -16,7 +16,8 @@
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
 #include "flexflow/legion_mock.h"
-#include "queue"
+#include "flexflow/hash_utils.h"
+#include <queue>
 
 using namespace Legion;
 using namespace flexflow;
@@ -83,6 +84,28 @@ std::string get_device_str(Device const *d) {
     default:
       assert(false && "Unknown device type");
   }
+  return s.str();
+}
+
+std::string get_domain_str(Domain const &d) {
+  std::ostringstream s;
+  s << "(";
+  for (int i = 0; i < d.dim; i++) {
+    s <<  d.rect_data[i];
+    if (i+1 != d.dim) {
+      s << ", ";
+    }
+  }
+  s << ")";
+  s << " to ";
+  s << "(";
+  for (int i = 0; i < d.dim; i++) {
+    s <<  d.rect_data[i+d.dim];
+    if (i+1 != d.dim) {
+      s << ", ";
+    }
+  }
+  s << ")";
   return s.str();
 }
 
@@ -244,6 +267,8 @@ Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
 
 void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
+                                                Domain const &src_domain,
+                                                Domain const &dst_domain,
                                                 size_t intersect)
 {
   if (src_task->device == dst_task->device) {
@@ -256,6 +281,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
     task->device = get_inter_gpu_comm_device_by_ids(src_task->device->gpu_id,
                                                     dst_task->device->gpu_id);
     task->run_time = (float)intersect * sizeof(float) / task->device->bandwidth;
+    task->src_domain = src_domain;
+    task->dst_domain = dst_domain;
     /* char const *src_name = (src_task->op_name == NULL) ? "???" : src_task->op_name; */
     /* char const *dst_name = (dst_task->op_name == NULL) ? "???" : dst_task->op_name; */
     /* printf("Comm task: src(%s) dst(%s) run_time(%.4lf) size(%zu) bandwidth(%.4lf)\n", */
@@ -286,12 +313,20 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 
 float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
-  hash = hash * 31 + std::hash<int>()(config.device_type);
-  hash = hash * 31 + std::hash<int>()(config.nDims);
+  if (cache_hits + cache_misses >= 10000) {
+    if (this->verbosity >= SimulationVerbosity::CACHE_STATS) {
+      printf("Hits: %lf%%, Misses: %lf%%\n", ((double)cache_hits) / 100.0, ((double)cache_misses) / 100.0);
+    }
+    this->cache_hits = 0;
+    this->cache_misses = 0;
+  }
+  size_t hash = std::hash<Op>()(*op);
+  hash_combine(hash, config.device_type);
+  hash_combine(hash, config.nDims);
   for (int i = 0; i < config.nDims; i++)
-    hash = hash * 31 + std::hash<int>()(config.dim[i]);
+    hash_combine(hash, config.dim[i]);
   if (hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end()) {
+    this->cache_misses++;
     float forward_time, backward_time;
     op->measure_compute_time(this, config, forward_time, backward_time);
     hash_to_op_forward_time[hash] = forward_time;
@@ -300,18 +335,27 @@ float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
     hash_to_op_backward_time[hash] = backward_time;
     return forward_time;
   } else {
+    this->cache_hits++;
     return hash_to_op_forward_time[hash];
   }
 }
 
 float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
-  hash = hash * 31 + std::hash<int>()(config.device_type);
-  hash = hash * 31 + std::hash<int>()(config.nDims);
+  if (cache_hits + cache_misses >= 10000) {
+    if (this->verbosity >= SimulationVerbosity::CACHE_STATS) {
+      printf("Hits: %lf%%, Misses: %lf%%\n", ((double)cache_hits) / 100.0, ((double)cache_misses) / 100.0);
+    }
+    this->cache_hits = 0;
+    this->cache_misses = 0;
+  }
+  size_t hash = std::hash<Op>()(*op);
+  hash_combine(hash, config.device_type);
+  hash_combine(hash, config.nDims);
   for (int i = 0; i < config.nDims; i++)
-    hash = hash * 31 + std::hash<int>()(config.dim[i]);
+    hash_combine(hash, config.dim[i]);
   if (hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end()) {
+    this->cache_misses++;
     float forward_time, backward_time;
     op->measure_compute_time(this, config, forward_time, backward_time);
     // Check consistency betwek forward and backward
@@ -320,6 +364,7 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
     hash_to_op_backward_time[hash] = backward_time;
     return backward_time;
   } else {
+    this->cache_hits++;
     return hash_to_op_backward_time[hash];
   }
 }
@@ -370,13 +415,13 @@ float Simulator::simulate_runtime(const FFModel* model,
             {
               SimTask* dstT = task_manager->get_forward_task(op, dstId);
               SimTask* srcT = task_manager->get_forward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(srcT, dstT, srcR, dstR, dstR.intersection(srcR).get_volume());
             }
             // Backward dependency
             {
               SimTask* dstT = task_manager->get_backward_task(op, dstId);
               SimTask* srcT = task_manager->get_backward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(dstT, srcT, srcR, dstR, dstR.intersection(srcR).get_volume());
             }
           }
         }
@@ -421,10 +466,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 synched.insert(nextId);
                 // Add comm. tasks from backT to updateT
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(backT, updateT, firstR, nextR, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->gpu_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR, nextR, firstR.get_volume());
               }
             }
           }
@@ -473,10 +518,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(backT->device->gpu_id == pc.device_ids[nextId]);
                 SimTask* barrierT = barriers[backT->device->gpu_id];
                 // Add comm. tasks from barrierT to updateT
-                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(barrierT, updateT, firstR, nextR, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->gpu_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR, nextR, firstR.get_volume());
               }
             }
           }
@@ -521,6 +566,11 @@ float Simulator::simulate_runtime(const FFModel* model,
       label << get_device_str(t->device) << " | ";
       if (t->src != NULL && t->dst != NULL) {
         label << "{ " << get_device_str(t->src) << " | " << get_device_str(t->dst) << " }" << " | ";
+        label << "{ " << get_domain_str(t->src_domain)
+              << " | " << get_domain_str(t->dst_domain)
+              << " | " << get_domain_str(t->src_domain.intersection(t->dst_domain))
+              << " | " << t->src_domain.intersection(t->dst_domain).get_volume()
+              << " }" << " | ";
       }
       label << "{ " << start_time << " | " << end_time << " }";
       label << " }\"";

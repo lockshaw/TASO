@@ -60,7 +60,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x,
                            const char* name)
-: Op(model, _op_type, name, x)
+: Op(model, _op_type, name, x), op_type(_op_type)
 {
   outputs[0].numDim = inputs[0].numDim;
   /* printf("Op: %s\n", name); */
@@ -213,13 +213,14 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
     input_domain.dim = sub_input.numDim;
     for (int i = 0; i < sub_input.numDim; i++) {
       input_domain.rect_data[i] = 0;
-      input_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_input.adim[i]-1;
+      input_domain.rect_data[i+input_domain.dim] = sub_input.adim[i]-1;
     }
     output_domain.dim = sub_output.numDim;
     for (int i = 0; i < sub_output.numDim; i++) {
       output_domain.rect_data[i] = 0;
-      output_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_output.adim[i]-1;
+      output_domain.rect_data[i+output_domain.dim] = sub_output.adim[i]-1;
     }
+    assert (input_domain == output_domain);
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
   }
@@ -243,7 +244,7 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  if (sim->verbose) {
+  if (sim->verbosity >= SimulationVerbosity::ALL) {
     printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
            name, sub_output.get_volume(), forward_time, backward_time);
   }

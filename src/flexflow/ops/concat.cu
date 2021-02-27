@@ -15,6 +15,7 @@
 
 #include "flexflow/model.h"
 #include "flexflow/cuda_helper.h"
+#include "flexflow/hash_utils.h"
 
 using namespace flexflow;
 
@@ -194,7 +195,7 @@ bool Concat::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  if (sim->verbose) {
+  if (sim->verbosity >= SimulationVerbosity::ALL) {
     printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         forward_time,

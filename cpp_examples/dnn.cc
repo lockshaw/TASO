@@ -46,11 +46,13 @@ void parse_args(float& alpha,
                 int& budget,
                 std::string& exportFileName,
                 DNNModel& dnnModel,
+                bool &printSubst,
                 int argc, char **argv) {
   alpha = 1.05;
   budget = 300;
   exportFileName = "";
   dnnModel = None;
+  printSubst = false;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--alpha")) {
       alpha = std::atof(argv[++i]);
@@ -68,6 +70,10 @@ void parse_args(float& alpha,
       dnnModel = name2model(std::string(argv[++i]));
       continue;
     }
+    if (!strcmp(argv[i], "--print-subst")) {
+      printSubst = true;
+      continue;
+    }
     fprintf(stderr, "Found unknown option!!\n");
     assert(false);
   }
@@ -79,25 +85,26 @@ int main(int argc, char **argv) {
   float alpha;
   std::string exportFileName;
   DNNModel dnn = None;
-  parse_args(alpha, budget, exportFileName, dnn, argc, argv);
+  bool printSubst;
+  parse_args(alpha, budget, exportFileName, dnn, printSubst, argc, argv);
   printf("DNN Model %d, alpha = %.4lf, budget = %d\n", dnn, alpha, budget);
 
   Graph* graph = nullptr;
   switch (dnn) {
     case BERT:
-      graph = bert(alpha, budget);
+      graph = bert(alpha, budget, printSubst);
       break;
     case NASNETA:
-      graph = nasnet_a(alpha, budget);
+      graph = nasnet_a(alpha, budget, printSubst);
       break;
     case NASRNN:
-      graph = nasrnn(alpha, budget);
+      graph = nasrnn(alpha, budget, printSubst);
       break;
     case Resnet50:
-      graph = resnet50(alpha, budget);
+      graph = resnet50(alpha, budget, printSubst);
       break;
     case Resnext50:
-      graph = resnext50(alpha, budget);
+      graph = resnext50(alpha, budget, printSubst);
       break;
     default:
       assert(false);

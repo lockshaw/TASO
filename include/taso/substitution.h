@@ -203,7 +203,7 @@ public:
   bool map_output(TensorX src, TensorX dst);
   void run(int depth, Graph* graph,
            std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
-           std::set<size_t>&, float threshold, int maxNumOps, flexflow::Simulator *sim);
+           std::set<size_t>&, float threshold, int maxNumOps, flexflow::Simulator *sim, flexflow::FFConfig const &config);
   Graph* create_new_graph(Graph* graph);
   bool create_new_operator(const OpX* opx, Op& op);
 

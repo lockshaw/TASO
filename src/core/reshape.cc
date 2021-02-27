@@ -65,7 +65,7 @@ Op Model::get_or_create_reshape(Tensor _input,
 Reshape::Reshape(Model* _model, Tensor _input,
                  const std::vector<int>& _shape)
 
-: OpBase(_input, _model, OP_RESHAPE)
+: OpBase(_input, _model, OP_RESHAPE), shape(_shape)
 {
   int size = 1;
   // set dims and strides

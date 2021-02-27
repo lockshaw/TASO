@@ -10,17 +10,18 @@ cmake -DProtobuf_INCLUDE_DIR="$PROTOBUF/src/" -DProtobuf_PROTOC_EXECUTABLE="$PRO
 #cmake -DProtobuf_INCLUDE_DIR=/share/software/user/open/protobuf/3.4.0/include/ -DCUDA_CUDNN_LIBRARY='/share/software/user/open/cudnn/7.6.5/lib64/libcudnn.so' -DProtobuf_LIBRARY='/share/software/user/open/protobuf/3.4.0/lib/libprotobuf.so' -DBUILD_CPP_EXAMPLES=ON ..
 make -j6 VERBOSE=1
 
+cd "$DIR/python/"
+rm -rf build/
+python3 setup.py install --user
+
 RUN="${RUN:-none}"
 case "$RUN" in
   test)
-    "$DIR/build/test/run_tests"
+    gdb -ex 'catch throw; run' --args "$DIR/build/test/run_tests" --break --abort
     ;;
   example)
     cd "$DIR/build/cpp_examples"
-    gdb -ex run --args ./dnn --dnn resnext50 --budget "${BUDGET:-0}" --export test.onnx
+    gdb -ex run --args ./dnn --dnn alexnet --budget "${BUDGET:-0}" --export test.onnx
     ;;
 esac
 
-# cd "$DIR/python/"
-# rm -rf build/
-# python3 setup.py install --user

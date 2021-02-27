@@ -29,7 +29,7 @@ coord_t const *Domain::get_lo() const {
 }
 
 coord_t const *Domain::get_hi() const {
-  return this->rect_data + MAX_RECT_DIM;
+  return this->rect_data + this->dim;
 }
 
 size_t Domain::get_volume() const {
@@ -38,8 +38,8 @@ size_t Domain::get_volume() const {
   int lo, hi;
   for (int i = 0; i < dim; i++) {
     lo = this->rect_data[i];
-    hi = this->rect_data[MAX_RECT_DIM + i];
-    if (hi <= lo) {
+    hi = this->rect_data[this->dim + i];
+    if (hi < lo) {
       return 0;
     }
     volume *= (hi - lo + 1);
@@ -50,9 +50,11 @@ size_t Domain::get_volume() const {
 
 Domain Domain::intersection(Domain const &other) const {
   Domain inter;
+  assert (this->dim == other.dim);
+  inter.dim = this->dim;
   for (int i = 0; i < dim; i++) {
     inter.rect_data[i] = std::max(this->rect_data[i], other.rect_data[i]);
-    inter.rect_data[MAX_RECT_DIM+i] = std::min(this->rect_data[MAX_RECT_DIM+i], other.rect_data[MAX_RECT_DIM+i]);
+    inter.rect_data[this->dim+i] = std::min(this->rect_data[this->dim+i], other.rect_data[this->dim+i]);
   }
 
   return inter;

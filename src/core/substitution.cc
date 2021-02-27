@@ -1117,7 +1117,7 @@ void GraphXfer::unmatch(OpX* srcOp, Op op, Graph* graph)
 
 void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
-                    std::set<size_t>& hashmap, float threshold, int maxNumOps, flexflow::Simulator *sim)
+                    std::set<size_t>& hashmap, float threshold, int maxNumOps, flexflow::Simulator *sim, flexflow::FFConfig const &ffconfig)
 {
   //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
@@ -1157,13 +1157,18 @@ void GraphXfer::run(int depth, Graph* graph,
     }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
-    if (newGraph->total_cost(sim) < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
+    bool reason1 = newGraph->total_cost(sim, ffconfig) < threshold;
+    bool reason2 = (int)newGraph->inEdges.size() < maxNumOps;
+    if (reason1 && reason2) {
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         candidates.push(newGraph);
       }
     } else {
-      printf("Candidate rejected because total cost %lf is above threshold %lf\n", newGraph->total_cost(sim), threshold);
+      /* std::cout << "Rejecting new graph for reason " << (reason1 ? 2 : 1) << std::endl; */
+      /* if (!reason1) { */
+      /*   std::cout << newGraph->total_cost(sim, ffconfig) << " < " << threshold << std::endl; */
+      /* } */
       delete newGraph;
     }
   } else {
@@ -1176,7 +1181,7 @@ void GraphXfer::run(int depth, Graph* graph,
         Op op = it->first;
         // Check mapOutput
         match(srcOp, op, graph);
-        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps, sim);
+        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps, sim, ffconfig);
         unmatch(srcOp, op, graph);
       }
     }

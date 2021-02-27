@@ -21,13 +21,13 @@ using namespace flexflow;
 
 Simulator::Simulator(FFConfig const &config,
                      FFHandler _handler)
-: handler(_handler), offset(0), warmup_times(5), repeat_times(10)
+: handler(_handler), offset(0), warmup_times(5), repeat_times(10), cache_hits(0), cache_misses(0)
 {
   // Allocate simulator memory
   cudaMalloc(&base_ptr, config.simulator_work_space_size);
   capacity = config.simulator_work_space_size;
 
-  float inter_gpu_bandwidth = 12 * 1024 * 1024.0f; /* B/ms*/
+  float inter_gpu_bandwidth = 1 * 1024 * 1024.0f; /* B/ms*/
   float inter_node_bandwidth = 12 * 1024 * 1024.0f / config.numNodes; /* B/ms*/
   float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
   size_t max_num_tasks = 1024 * 1024;
@@ -43,7 +43,7 @@ Simulator::Simulator(FFConfig const &config,
   num_nodes = config.numNodes;
   gpus_per_node = config.workersPerNode;
   total_num_gpus = num_nodes * gpus_per_node;
-  verbose = config.simulationVerbose;
+  verbosity = config.simulationVerbosity;
   // Create GPU compute device
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
@@ -55,7 +55,7 @@ Simulator::Simulator(FFConfig const &config,
     for (int j = 0; j < total_num_gpus; j++) {
       Device* src = id_to_compute_device[i];
       Device* dst = id_to_compute_device[j];
-      if (src->node_id == dst->node_id && src != dst) {
+      if (src->node_id == dst->node_id /*&& src != dst*/) {
         int hash = i * total_num_gpus + j;
         ids_to_inter_gpu_comm_device[hash] = new Device(Device::DEVICE_COMM,
             inter_gpu_bandwidth);

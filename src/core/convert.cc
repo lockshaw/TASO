@@ -1,6 +1,7 @@
 #include "flexflow/model.h"
 #include "taso/ops.h"
 #include "flexflow/convert.h"
+#include "flexflow/hash_utils.h"
 #include <ostream>
 
 namespace taso {
@@ -12,100 +13,104 @@ namespace taso {
   }
 }
 
-Converter::Converter(flexflow::FFConfig ffconfig, taso::Graph const &graph)
-  : model(ffconfig), graph(graph)
-{
-}
+void GraphVisitor::run(taso::Graph const &graph) {
+  this->graph = &graph;
+  std::queue<taso::Op> to_visit;
 
-void Converter::convert() {
-  auto in = std::unique_ptr<std::ostream>(nullptr);
-  auto out = std::unique_ptr<std::ostream>(nullptr);
-  this->convert(std::move(in), std::move(out));
-}
+  for (auto const &node : graph.get_all_nodes()) {
+    if (this->isStartingPoint(node)) {
+      to_visit.push(node);
+    }
+  }
 
-void Converter::convert(std::unique_ptr<std::ostream> ossIn, std::unique_ptr<std::ostream> ossOut) {
-  if (ossIn != NULL) {
-    graph.to_filtered_dot(std::move(ossIn));
-  }
-  std::list<taso::Op> to_convert;
-  for (auto const &kv : graph.outEdges) {
-    /* if (kv.first.ptr != NULL && kv.first.ptr->type == taso::OP_INPUT) { */
-      for (taso::Edge const &edge : kv.second) {
-        if (edge.dstOp.ptr->type != taso::OP_INPUT && edge.dstOp.ptr->type != taso::OP_WEIGHT) {
-          to_convert.push_back(edge.dstOp);
-        }
-      }
-    /* } */
-  }
   taso::Op current;
-  bool ready;
-  while (!to_convert.empty()) {
-    /* printf("The queue has %d items\n", to_convert.size()); */
-    current = to_convert.front();
-    to_convert.pop_front();
-    auto find_result = graph.inEdges.find(current);
-    assert (find_result != graph.inEdges.end());
-    ready = true;
-    /* printf("Are we ready?\n"); */
-    /* printf("We have %d in edges to examine\n", find_result->second.size()); */
-    for (taso::Edge const &edge : find_result->second) {
-      /* printf("Examining edge with srcOp id %d and srcOp ptr %p and srcOp type %d\n", edge.srcOp.guid, edge.srcOp.ptr, edge.srcOp.ptr ? edge.srcOp.ptr->type : -1); */
-      if (edge.srcOp.guid != taso::GUID_WEIGHT
-          && edge.srcOp.guid != taso::GUID_INPUT
-          && edge.srcOp.ptr->type != taso::OP_INPUT
-          && edge.srcOp.ptr->type != taso::OP_WEIGHT
-          && this->opMap.find(edge.srcOp) == this->opMap.end()) {
-        ready = false;
-        /* printf("No we are not!\n"); */
-        break;
-      }
-    }
-    if (ready) {
-      /* printf("Yes we are!\n"); */
-    }
-    if (!ready) {
-      continue;
-    } else {
-      /* printf("Converting node with id %d and ptr %p\n", current.guid, current.ptr); */
-      bool didConvert = this->convertOp(current);
-      assert (this->opMap.find(current) != this->opMap.end());
-      if (didConvert) {
-        /* printf("Adding the destinations of the %d outEdges\n", graph.outEdges[current].size()); */
-        for (taso::Edge const &outEdge : graph.outEdges[current]) {
-          to_convert.push_back(outEdge.dstOp);
+  while (!to_visit.empty()) {
+    current = to_visit.front();
+    to_visit.pop();
+    this->visit(current, to_visit);
+  }
+}
+
+void TopoVisitor::visit(taso::Op const &op, std::queue<taso::Op> &toVisit) {
+  if (this->visited.find(op) != this->visited.end()) {
+    return;
+  }
+  {
+    auto iter = this->graph->inEdges.find(op);
+    if (iter != this->graph->inEdges.end()) {
+      for (taso::Edge const &e : iter->second) {
+        if (this->visited.find(e.srcOp) == this->visited.end()) {
+          return;
         }
       }
     }
   }
-  if (ossOut != NULL) {
-    model.to_dot(std::move(ossOut));
+  this->visitNode(op);
+  this->visited.insert(op);
+  {
+    auto iter = this->graph->outEdges.find(op);
+    if (iter != this->graph->outEdges.end()) {
+      for (taso::Edge const &e : iter->second) {
+        toVisit.push(e.dstOp);
+      }
+    }
   }
 }
 
-bool Converter::convertOp(taso::Op const &op) {
-  auto result = this->opMap.find(op);
-  if (result == this->opMap.end()) {
-    this->rawConvertOp(op);
-    this->opMap[op] = model.layers.back().get();
-    /* printf("Inserting converted op with id %d and ptr %p\n", op.guid, op.ptr); */
-    /* printf("The op map now has %d items\n", this->opMap.size()); */
-    return true;
-  }
-  return false;
+bool TopoVisitor::isStartingPoint(taso::Op const &op) {
+  return true;
 }
 
-void Converter::rawConvertOp(taso::Op const &op) {
+ConverterVisitor::ConverterVisitor(flexflow::FFConfig const &ffconfig)
+  : model(ffconfig)
+{ }
+
+bool is_input(taso::Op const &op) {
+  return op.guid == taso::GUID_INPUT || (op.ptr != nullptr && op.ptr->type == taso::OP_INPUT);
+}
+
+bool is_weight(taso::Op const &op) {
+  return op.guid == taso::GUID_WEIGHT || (op.ptr != nullptr && op.ptr->type == taso::OP_WEIGHT);
+}
+
+bool ConverterVisitor::isStartingPoint(taso::Op const &op) {
+  return is_input(op) || is_weight(op);
+}
+
+void ConverterVisitor::visitNode(taso::Op const &op) {
+  if (is_weight(op)) {
+    this->isDerivedFromWeight.insert(op);
+    return;
+  } else if (is_input(op)) {
+    return;
+  }
+
   flexflow::Tensor inputs[MAX_NUM_INPUTS];
   taso::Tensor *t_inputs = op.ptr->inputs;
   taso::Tensor *t_outputs = op.ptr->outputs;
-  for (taso::Edge const &inE : this->graph.inEdges[op]) {
-    assert (inE.dstOp == op);
-    if (inE.srcOp.guid != taso::GUID_WEIGHT && inE.srcOp.guid != taso::GUID_INPUT && inE.srcOp.ptr->type != taso::OP_INPUT && inE.srcOp.ptr->type != taso::OP_WEIGHT) {
-      inputs[inE.dstIdx] = this->opMap.at(inE.srcOp)->outputs[inE.srcIdx];
-    } else {
-      inputs[inE.dstIdx] = this->convertTensor(t_inputs[inE.dstIdx]);
+  auto iter = this->graph->inEdges.find(op);
+  bool derivedFromWeight = true;
+  if (iter != this->graph->inEdges.end()) {
+    for (taso::Edge const &inE : iter->second) {
+      assert (inE.dstOp == op);
+
+      if (this->isDerivedFromWeight.find(inE.srcOp) == this->isDerivedFromWeight.end()) {
+        derivedFromWeight = false;
+      }
+
+      if (!is_input(inE.srcOp) && this->isDerivedFromWeight.find(inE.srcOp) == this->isDerivedFromWeight.end()) {
+        inputs[inE.dstIdx] = this->opMap.at(inE.srcOp)->outputs[inE.srcIdx];
+      } else {
+        inputs[inE.dstIdx] = this->convertTensor(t_inputs[inE.dstIdx]);
+      }
     }
   }
+
+  if (derivedFromWeight) {
+    this->isDerivedFromWeight.insert(op);
+    return;
+  }
+
   switch (op.ptr->type) {
     case taso::OP_CONV2D:
     {
@@ -121,10 +126,10 @@ void Converter::rawConvertOp(taso::Op const &op) {
         p->strideH, p->strideW,
         padH, padW,
         groups,
-        this->convertActiMode(p->activation),
+        convertActiMode(p->activation),
         true
       );
-      return;
+      break;
     }
     case taso::OP_EW_ADD:
     {
@@ -132,7 +137,15 @@ void Converter::rawConvertOp(taso::Op const &op) {
         inputs[0],
         inputs[1]
       );
-      return;
+      break;
+    }
+    case taso::OP_EW_MUL:
+    {
+      model.multiply(
+        inputs[0],
+        inputs[1]
+      );
+      break;
     }
     case taso::OP_POOL2D_MAX:
     case taso::OP_POOL2D_AVG:
@@ -146,9 +159,9 @@ void Converter::rawConvertOp(taso::Op const &op) {
         p->strideH, p->strideW,
         padH, padW,
         (op.ptr->type == taso::OP_POOL2D_MAX) ? flexflow::POOL_MAX : flexflow::POOL_AVG,
-        this->convertActiMode(p->activation)
+        convertActiMode(p->activation)
       );
-      return;
+      break;
     }
     case taso::OP_CONCAT:
     {
@@ -162,14 +175,14 @@ void Converter::rawConvertOp(taso::Op const &op) {
           tensors.data(),
           p->axis
       );
-      return;
+      break;
     }
     case taso::OP_RELU:
     {
       model.relu(
         inputs[0]
       );
-      return;
+      break;
     }
     case taso::OP_SPLIT:
     {
@@ -181,33 +194,81 @@ void Converter::rawConvertOp(taso::Op const &op) {
         p->sizes,
         p->axis
       );
-      return;
+      break;
+    }
+    case taso::OP_RESHAPE:
+    {
+      taso::Reshape *p = (taso::Reshape *)op.ptr;
+      model.reshape(
+        inputs[0],
+        p->shape
+      );
+      break;
+    }
+    case taso::OP_MATMUL:
+    {
+      taso::Matmul *p = (taso::Matmul *)op.ptr;
+      model.dense(
+        inputs[0],
+        t_outputs[0].dim[1],
+        convertActiMode(p->activation),
+        false
+      );
+      break;
+    }
+    case taso::OP_SIGMOID:
+    {
+      model.sigmoid(
+        inputs[0]
+      );
+      break;
+    }
+    case taso::OP_TANH:
+    {
+      model.tanh(
+        inputs[0]
+      );
+      break;
+    }
+    case taso::OP_TRANSPOSE:
+    {
+      taso::Transpose *p = (taso::Transpose *)op.ptr;
+      auto output = model.transpose(
+        inputs[0],
+        p->permutation
+      );
+      break;
     }
     default:
       throw std::runtime_error("Unknown op type " + taso::op_type_name(op.ptr->type) + " in conversion");
   }
+  this->opMap[op] = this->model.layers.back().get();
 }
 
-flexflow::Tensor Converter::convertTensor(taso::Tensor const &in) const {
+size_t tensor_dim_hash(taso::Tensor const &t) {
+  using flexflow::hash_combine;
+
+  size_t hash = 394876;
+  hash_combine(hash, t.numDim);
+  for (int i = 0; i < t.numDim; i++) {
+    hash_combine(hash, t.dim[i]);
+  }
+  return hash;
+}
+
+flexflow::Tensor ConverterVisitor::convertTensor(taso::Tensor const &in) const {
   flexflow::Tensor out;
   out.numDim = in.numDim;
   for (int i = 0; i < in.numDim; i++) {
     out.adim[in.numDim - i - 1] = in.dim[i];
   }
   out.data_type = flexflow::DT_FLOAT;
-  /* if (in.op.ptr->type != taso::OP_INPUT) { */
-  /*   auto owner_iter = this->opMap.find(in.op); */
-  /*   assert (owner_iter != this->opMap.end()); */
-  /*   out.owner_op = owner_iter->second; */
-  /*   out.owner_idx = in.idx; */
-  /* } else { */
   out.owner_op = NULL;
   out.owner_idx = 0;
-  /* } */
   return out;
 }
 
-flexflow::ActiMode Converter::convertActiMode(taso::ActiMode const &in) const {
+flexflow::ActiMode convertActiMode(taso::ActiMode const &in) {
   switch (in) {
     case taso::AC_MODE_NONE:
       return flexflow::AC_MODE_NONE;
@@ -222,6 +283,179 @@ flexflow::ActiMode Converter::convertActiMode(taso::ActiMode const &in) const {
   }
 }
 
-flexflow::FFModel &Converter::get_converted() {
+flexflow::FFModel &ConverterVisitor::get_converted() {
   return this->model;
 }
+
+Converter::Converter(flexflow::FFConfig ffconfig, taso::Graph const &graph)
+  : v(ffconfig), graph(graph)
+{
+}
+
+void Converter::convert() {
+  auto in = std::unique_ptr<std::ostream>(nullptr);
+  auto out = std::unique_ptr<std::ostream>(nullptr);
+  this->convert(std::move(in), std::move(out));
+}
+
+void Converter::convert(std::unique_ptr<std::ostream> ossIn, std::unique_ptr<std::ostream> ossOut) {
+  if (ossIn != NULL) {
+    graph.to_filtered_dot(std::move(ossIn));
+  }
+
+  this->v.run(this->graph);
+  /* std::list<taso::Op> to_convert; */
+  /* for (auto const &kv : graph.outEdges) { */
+  /*   /1* if (kv.first.ptr != NULL && kv.first.ptr->type == taso::OP_INPUT) { *1/ */
+  /*     for (taso::Edge const &edge : kv.second) { */
+  /*       if (edge.dstOp.ptr->type != taso::OP_INPUT && edge.dstOp.ptr->type != taso::OP_WEIGHT) { */
+  /*         to_convert.push_back(edge.dstOp); */
+  /*       } */
+  /*     } */
+  /*   /1* } *1/ */
+  /* } */
+  /* taso::Op current; */
+  /* bool ready; */
+  /* while (!to_convert.empty()) { */
+  /*   /1* printf("The queue has %d items\n", to_convert.size()); *1/ */
+  /*   current = to_convert.front(); */
+  /*   to_convert.pop_front(); */
+  /*   auto find_result = graph.inEdges.find(current); */
+  /*   assert (find_result != graph.inEdges.end()); */
+  /*   ready = true; */
+  /*   /1* printf("Are we ready?\n"); *1/ */
+  /*   /1* printf("We have %d in edges to examine\n", find_result->second.size()); *1/ */
+  /*   for (taso::Edge const &edge : find_result->second) { */
+  /*     /1* printf("Examining edge with srcOp id %d and srcOp ptr %p and srcOp type %d\n", edge.srcOp.guid, edge.srcOp.ptr, edge.srcOp.ptr ? edge.srcOp.ptr->type : -1); *1/ */
+  /*     if (edge.srcOp.guid != taso::GUID_WEIGHT */
+  /*         && edge.srcOp.guid != taso::GUID_INPUT */
+  /*         && edge.srcOp.ptr->type != taso::OP_INPUT */
+  /*         && edge.srcOp.ptr->type != taso::OP_WEIGHT */
+  /*         && this->opMap.find(edge.srcOp) == this->opMap.end()) { */
+  /*       ready = false; */
+  /*       /1* printf("No we are not!\n"); *1/ */
+  /*       break; */
+  /*     } */
+  /*   } */
+  /*   if (ready) { */
+  /*     /1* printf("Yes we are!\n"); *1/ */
+  /*   } */
+  /*   if (!ready) { */
+  /*     continue; */
+  /*   } else { */
+  /*     /1* printf("Converting node with id %d and ptr %p\n", current.guid, current.ptr); *1/ */
+  /*     bool didConvert = this->convertOp(current); */
+  /*     assert (this->opMap.find(current) != this->opMap.end()); */
+  /*     if (didConvert) { */
+  /*       /1* printf("Adding the destinations of the %d outEdges\n", graph.outEdges[current].size()); *1/ */
+  /*       for (taso::Edge const &outEdge : graph.outEdges[current]) { */
+  /*         to_convert.push_back(outEdge.dstOp); */
+  /*       } */
+  /*     } */
+  /*   } */
+  /* } */
+
+  if (ossOut != NULL) {
+    this->get_converted().to_dot(std::move(ossOut));
+  }
+}
+
+/* void Converter::rawConvertOp(taso::Op const &op) { */
+/*   flexflow::Tensor inputs[MAX_NUM_INPUTS]; */
+/*   taso::Tensor *t_inputs = op.ptr->inputs; */
+/*   taso::Tensor *t_outputs = op.ptr->outputs; */
+/*   for (taso::Edge const &inE : this->graph.inEdges[op]) { */
+/*     assert (inE.dstOp == op); */
+/*     if (inE.srcOp.guid != taso::GUID_WEIGHT && inE.srcOp.guid != taso::GUID_INPUT && inE.srcOp.ptr->type != taso::OP_INPUT && inE.srcOp.ptr->type != taso::OP_WEIGHT) { */
+/*       inputs[inE.dstIdx] = this->opMap.at(inE.srcOp)->outputs[inE.srcIdx]; */
+/*     } else { */
+/*       inputs[inE.dstIdx] = this->convertTensor(t_inputs[inE.dstIdx]); */
+/*     } */
+/*   } */
+/*   switch (op.ptr->type) { */
+/*     case taso::OP_CONV2D: */
+/*     { */
+/*       taso::Conv2D *p = (taso::Conv2D *)op.ptr; */
+/*       int padH, padW, groups; */
+/*       p->get_padding(&padH, &padW); */
+/*       p->get_int_parameter(taso::PM_GROUP, &groups); */
+/*       /1* printf("Creating convolution layer with input channels %d and groups %d\n", t_inputs[0].dim[1], groups); *1/ */
+/*       model.conv2d( */
+/*         inputs[0], */
+/*         t_outputs[0].dim[1], */
+/*         t_inputs[1].dim[2], t_inputs[1].dim[3], */
+/*         p->strideH, p->strideW, */
+/*         padH, padW, */
+/*         groups, */
+/*         convertActiMode(p->activation), */
+/*         true */
+/*       ); */
+/*       return; */
+/*     } */
+/*     case taso::OP_EW_ADD: */
+/*     { */
+/*       model.add( */
+/*         inputs[0], */
+/*         inputs[1] */
+/*       ); */
+/*       return; */
+/*     } */
+/*     case taso::OP_POOL2D_MAX: */
+/*     case taso::OP_POOL2D_AVG: */
+/*     { */
+/*       taso::Pool2D *p = (taso::Pool2D *)op.ptr; */
+/*       int padH, padW; */
+/*       p->get_padding(&padH, &padW); */
+/*       model.pool2d( */
+/*         inputs[0], */
+/*         p->kernelH, p->kernelW, */
+/*         p->strideH, p->strideW, */
+/*         padH, padW, */
+/*         (op.ptr->type == taso::OP_POOL2D_MAX) ? flexflow::POOL_MAX : flexflow::POOL_AVG, */
+/*         convertActiMode(p->activation) */
+/*       ); */
+/*       return; */
+/*     } */
+/*     case taso::OP_CONCAT: */
+/*     { */
+/*       taso::Concat *p = (taso::Concat *)op.ptr; */
+/*       std::vector<flexflow::Tensor> tensors; */
+/*       for (int i = 0; i < p->n; i++) { */
+/*         tensors.push_back(inputs[i]); */
+/*       } */
+/*       model.concat( */
+/*           p->n, */
+/*           tensors.data(), */
+/*           p->axis */
+/*       ); */
+/*       return; */
+/*     } */
+/*     case taso::OP_RELU: */
+/*     { */
+/*       model.relu( */
+/*         inputs[0] */
+/*       ); */
+/*       return; */
+/*     } */
+/*     case taso::OP_SPLIT: */
+/*     { */
+/*       taso::Split *p = (taso::Split *)op.ptr; */
+/*       flexflow::Tensor outputs[MAX_NUM_INPUTS]; */
+/*       model.split( */
+/*         inputs[0], */
+/*         outputs, */
+/*         p->sizes, */
+/*         p->axis */
+/*       ); */
+/*       return; */
+/*     } */
+/*     default: */
+/*       throw std::runtime_error("Unknown op type " + taso::op_type_name(op.ptr->type) + " in conversion"); */
+/*   } */
+/* } */
+
+flexflow::FFModel &Converter::get_converted() {
+  return this->v.get_converted();
+}
+
+

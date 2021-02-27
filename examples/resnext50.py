@@ -21,7 +21,13 @@ def resnext_block(graph, input, strides, out_channels, groups):
                            activation="RELU")
     return graph.relu(graph.add(input, t))
 
-DEFAULT_MODEL_PATH = Path("/home/groups/aaiken/unger/models/resnext50")
+DEFAULT_MODEL_PATH = Path("/home/groups/aaiken/unger/models/resnext50-2")
+
+def linear(graph, input_tensor, output_dim, use_bias):
+    assert use_bias == False
+    weights = graph.new_weight(dims=(input_tensor.dim(1), output_dim))
+    product = graph.matmul(input_tensor, weights)
+    return product
 
 if __name__ == '__main__':
     import argparse
@@ -33,8 +39,11 @@ if __name__ == '__main__':
     p.add_argument("--budget", "-b", default=100, type=int)
     p.add_argument("--alpha", default=1.05, type=float)
     p.add_argument("--debug-dir", "-d", type=Path, default=None)
+    p.add_argument("--ff-budget", default=0, type=int)
+    p.add_argument("--gpus", type=int, required=True)
     args = p.parse_args()
     batch_size = args.batch_size
+    ff_budget = args.ff_budget
 
     graph = ts.new_graph()
     input = graph.new_input(dims=(batch_size,3,224,224))
@@ -56,8 +65,15 @@ if __name__ == '__main__':
     for i in range(3):
         t = resnext_block(graph, t, strides, 1024, 32)
         strides = (1,1)
+    t = graph.relu(t)
+    t = graph.avgpool2d(input=t, kernels=(t.dim(2), t.dim(3)), strides=(1, 1), padding="VALID")
+    print('Dims', t.dim(0), t.dim(1), t.dim(2), t.dim(3))
+    t = graph.reshape(t, (t.dim(0),t.dim(1) * t.dim(2) * t.dim(3)))
+    t = linear(graph, t, 1000, use_bias=False)
+    print('About to export')
 
     unoptimized_model = ts.export_onnx(graph)
+    print('Finished export')
     debug_dir = None
     if args.debug_dir is not None:
         debug_dir = args.debug_dir.resolve()
@@ -66,13 +82,17 @@ if __name__ == '__main__':
         graph.export_to_file(str(debug_dir / "unoptimized.txt").encode())
     if args.export:
         onnx.checker.check_model(unoptimized_model)
-        onnx.save(unoptimized_model, str(args.output_dir / f"resnext50_{batch_size}_unoptimized.onnx"))
-    _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, print_subst=args.print_subst)
+        onnx.save(unoptimized_model, str(args.output_dir / f"resnext50-{args.budget}x{ff_budget}_{batch_size}_unoptimized_alpha{str(args.alpha).replace('.', 'p')}_g{args.gpus}.onnx"))
+    # _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, ff_budget=ff_budget, print_subst=args.print_subst)
+    _old_optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, ff_budget=0, num_gpus=1, print_subst=args.print_subst)
+    _optimized_model = ts.optimize(graph, alpha=args.alpha, budget=args.budget, ff_budget=ff_budget, num_gpus=args.gpus, print_subst=args.print_subst)
     if debug_dir is not None:
         _optimized_model.export_to_file(str(debug_dir / "optimized.txt").encode())
     if args.export:
         optimized_model = ts.export_onnx(_optimized_model)
-        onnx.save(optimized_model, str(args.output_dir / f"resnext50_{batch_size}_optimized.onnx"))
+        onnx.save(optimized_model, str(args.output_dir / f"resnext50-{args.budget}x{ff_budget}_{batch_size}_optimized_alpha{str(args.alpha).replace('.', 'p')}_g{args.gpus}.onnx"))
+        old_optimized_model = ts.export_onnx(_old_optimized_model)
+        onnx.save(old_optimized_model, str(args.output_dir / f"resnext50-{args.budget}x{ff_budget}_{batch_size}_old-optimized_alpha{str(args.alpha).replace('.', 'p')}_g{args.gpus}.onnx"))
     # new_graph = ts.optimize(graph, alpha=args.alpha, budget=args.budget)
     # onnx_model = ts.export_onnx(new_graph)
     # onnx.checker.check_model(onnx_model)

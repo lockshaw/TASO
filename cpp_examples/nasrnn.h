@@ -52,7 +52,7 @@ Graph* nasrnn(float alpha, int budget, bool printSubst = false) {
   for (int i = 0; i < NASRNN_LENGTH; i++) {
     state = nas_node(graph, state, xs[i]);
   }
-  return graph->optimize(alpha, budget, printSubst);
+  return graph->optimize(alpha, budget, 0, 1, printSubst);
 }
 
 #undef NASRNN_HIDDEN_SIZE

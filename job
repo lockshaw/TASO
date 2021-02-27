@@ -1,0 +1,26 @@
+#!/bin/bash -eu
+#SBATCH --partition=aaiken
+#SBATCH -t 0:10:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks=1
+#SBATCH --mem-per-cpu=8192
+set -euo pipefail
+source "$HOME/TASO/env.sh"
+cd "$HOME/TASO/examples/"
+BATCH=16
+echo "STARTING PYTHON CALL"
+BUDGET=10
+FFBUDGET=10
+ALPHA=1.05
+NUM_GPUS=4
+# python3 -u alexnet_big.py "$BATCH" --export --print-subst --budget 0 | tee "/home/groups/aaiken/unger/models/alexnet-big/trace_${BATCH}.txt"
+FILENAME="/home/groups/aaiken/unger/models/nasneta-2/trace-${BUDGET}x${FFBUDGET}_${BATCH}_alpha${ALPHA}_g${NUM_GPUS}.txt"
+FILEDIR="$(dirname "$FILENAME")"
+mkdir -p "$FILEDIR"
+python3 -u nasnet_a.py "$BATCH" -n 5 --export --print-subst --budget "$BUDGET" --ff-budget "$FFBUDGET" --output-dir "$FILEDIR" --alpha "$ALPHA" --gpus "$NUM_GPUS" | tee "$FILENAME"
+# python3 -u nasrnn.py "$BATCH" --export --print-subst --budget 10 | tee "$FILENAME"
+
+echo "DONE!"

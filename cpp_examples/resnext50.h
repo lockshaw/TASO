@@ -57,7 +57,7 @@ Graph* resnext50(float alpha, int budget, bool printSubst = false) {
     t = resnext_block(graph, t, stride, stride, 1024, 32);
     stride = 1;
   }
-  return graph->optimize(alpha, budget, printSubst);
+  return graph->optimize(alpha, budget, 0, 1, printSubst);
 }
 
 #endif

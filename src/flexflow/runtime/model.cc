@@ -16,6 +16,7 @@
 #include "flexflow/cuda_helper.h"
 #include "flexflow/legion_mock.h"
 #include "dirent.h"
+#include "flexflow/hash_utils.h"
 
 using namespace std;
 using namespace flexflow;
@@ -53,7 +54,17 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
     case OP_FLAT:
     case OP_RESHAPE:
       {
-        assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
+        /* printf("dimensions: %d [", pc.nDims); */
+        /* for (int i = 0; i < pc.nDims; i++) { */
+        /*   printf("%d ", pc.dim[i]); */
+        /* } */
+        /* printf("]\n"); */
+        /* printf("dimensions: %d [", this->numDim); */
+        /* for (int i = 0; i < this->numDim; i++) { */
+        /*   printf("%d ", this->adim[i]); */
+        /* } */
+        /* printf("]\n"); */
+        /* assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT"); */
         int nonBatchDim = pc.dim[0];
         tensor.numDim = numDim;
         assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
@@ -61,10 +72,15 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
           printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], nonBatchDim);
           return false;
         }
-        tensor.adim[numDim - 1] = adim[numDim - 1] / pc.dim[1];
-        for (int i = numDim - 2; i >= 0; i--) {
-          tensor.adim[i] = adim[i];
+        tensor.adim[this->numDim - 1] = this->adim[this->numDim - 1] / pc.dim[pc.nDims - 1];
+        for (int i = this->numDim - 2; i >= 0; i--) {
+          tensor.adim[i] = this->adim[i];
         }
+        /* printf("dimensions: %d [", tensor.numDim); */
+        /* for (int i = 0; i < tensor.numDim; i++) { */
+        /*   printf("%d ", tensor.adim[i]); */
+        /* } */
+        /* printf("]\n"); */
       }
       break;
     default:
@@ -125,9 +141,146 @@ Domain Tensor::get_domain() const
   d.dim = this->numDim;
   for (int i = 0; i < this->numDim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+Domain::MAX_RECT_DIM] = this->adim[i] - 1;
+    assert (this->adim[i] != 0);
+    d.rect_data[i+d.dim] = this->adim[i] - 1;
   }
+  assert (this->get_volume() == d.get_volume());
   return d;
+}
+
+size_t Tensor::get_dim_hash() const {
+  size_t hash = 125892;
+  hash_combine(hash, this->numDim);
+  for (int i = 0; i < this->numDim; i++) {
+    hash_combine(hash, this->adim[i]);
+  }
+  return hash;
+}
+
+size_t ElementBinary::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->inputs[1].get_dim_hash(),
+    this->op_type
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t ElementUnary::param_hash() const {
+  auto params = std::make_tuple(
+      this->inputs[0].get_dim_hash(),
+      this->op_type
+    );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Conv2D::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->in_channels,
+    this->out_channels,
+    this->kernel_h,
+    this->kernel_w,
+    this->stride_h,
+    this->stride_w,
+    this->padding_h,
+    this->padding_w,
+    this->groups,
+    this->use_bias,
+    this->activation
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Pool2D::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->kernel_h,
+    this->kernel_w,
+    this->stride_h,
+    this->stride_w,
+    this->padding_h,
+    this->padding_w,
+    this->pool_type,
+    this->activation
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Linear::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->in_channels,
+    this->out_channels,
+    this->use_bias,
+    this->activation
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Concat::param_hash() const {
+  size_t inputs_hash = 128398;
+  hash_combine(inputs_hash, this->numInputs);
+  for (int i = 0; i < this->numInputs; i++) {
+    hash_combine(inputs_hash, this->inputs[i].get_dim_hash());
+  }
+  auto params = std::make_tuple(
+    inputs_hash,
+    this->axis
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Split::param_hash() const {
+  size_t outputs_hash = 293847;
+  hash_combine(outputs_hash, this->numOutputs);
+  for (int i = 0; i < this->numOutputs; i++) {
+    hash_combine(outputs_hash, this->outputs[i].get_dim_hash());
+  }
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    outputs_hash,
+    this->axis
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Reshape::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->outputs[0].get_dim_hash()
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Flat::param_hash() const {
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash()
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+size_t Transpose::param_hash() const {
+  size_t perms_hash = 233456;
+  for (int i = 0; i < this->inputs[0].numDim; i++) {
+    hash_combine(perms_hash, this->perm[i]);
+  }
+  auto params = std::make_tuple(
+    this->inputs[0].get_dim_hash(),
+    this->outputs[0].get_dim_hash(),
+    perms_hash
+  );
+  return std::hash<decltype(params)>()(params);
+}
+
+namespace std {
+  size_t hash<Op>::operator()(Op const &op) const {
+    auto params = std::make_tuple(
+        op.op_type,
+        op.param_hash()
+      );
+    return std::hash<decltype(params)>()(params);
+  }
 }
 
 Op::Op(FFModel& model,
@@ -491,7 +644,7 @@ void OpMeta::init_nccl_communicator(const Task* task,
 }
 #endif
 
-FFModel::FFModel(FFConfig& _config)
+FFModel::FFModel(FFConfig const &_config)
 : op_global_guid(100), config(_config)
 {
   // Load strategy file
@@ -558,7 +711,7 @@ float FFModel::optimize(Simulator* simulator,
                        size_t budget, float alpha) const
 {
   // Start from data parallel
-  if (simulator->verbose) {
+  if (simulator->verbosity >= SimulationVerbosity::PROGRESS_ONLY) {
     printf("Running simulator for model with %d nodes\n", best.size());
   }
   std::map<Op*, ParallelConfig> current, next;
@@ -568,7 +721,7 @@ float FFModel::optimize(Simulator* simulator,
   for (size_t iter = 0; iter < budget; iter++) {
     rewrite(current, next);
     float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 100 == 0 && simulator->verbose) {
+    if (iter % 100 == 0 && simulator->verbosity >= SimulationVerbosity::PROGRESS_ONLY) {
       printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
              current_runtime, next_runtime, best_runtime);
     }
@@ -587,11 +740,11 @@ float FFModel::optimize(Simulator* simulator,
       current_runtime = next_runtime;
     }
   }
-  if (simulator->verbose) {
+  if (simulator->verbosity >= SimulationVerbosity::ALL) {
     printf("=========== Best Discovered Strategy ==========\n");
   }
   simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
-  if (simulator->verbose) {
+  if (simulator->verbosity >= SimulationVerbosity::ALL) {
     std::map<Op*, ParallelConfig>::const_iterator it;
     for (it = best.begin(); it != best.end(); it++) {
       printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
@@ -691,12 +844,6 @@ void FFModel::to_dot(std::unique_ptr<std::ostream> s) const {
         op.get()
       );
     }
-    /* for (int i = 0; i < op->numOutputs; i++) { */
-    /*   dot.add_edge( */
-    /*     op.get(), */
-    /*     op->outputs[i].owner_op */
-    /*   ); */
-    /* } */
   }
   dot.close();
 }
@@ -716,17 +863,17 @@ struct DefaultConfig {
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
   //const static int workersPerNode = 0;
-  const static int workersPerNode = 1;
+  const static int workersPerNode = 4;
   //const static int cpusPerNode = 0;
   const static int cpusPerNode = 1;
-  const static size_t searchBudget = 0;
+  const static size_t searchBudget = 1;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
-  const static bool searchOverlapBackwardUpdate = false;
+  const static bool searchOverlapBackwardUpdate = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
-  const static bool simulationVerbose = false;
+  const static SimulationVerbosity simulationVerbosity = SimulationVerbosity::SIMULATOR_MINIMAL;
 };
 
 FFConfig::FFConfig()
@@ -748,7 +895,7 @@ FFConfig::FFConfig()
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
-  simulationVerbose = DefaultConfig::simulationVerbose;
+  simulationVerbosity = DefaultConfig::simulationVerbosity;
 
   import_strategy_file = "";
   export_strategy_file = "";

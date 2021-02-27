@@ -59,7 +59,7 @@ Graph* bert(float alpha, int budget, bool printSubst = false) {
   for (int i = 0; i < 8; i++) {
     t = attention(graph, t, 16);
   }
-  return graph->optimize(alpha, budget, printSubst);
+  return graph->optimize(alpha, budget, 0, 1, printSubst);
 }
 
 #endif
