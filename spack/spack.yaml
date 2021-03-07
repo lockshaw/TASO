@@ -1,0 +1,8 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  # add package specs to the `specs` list
+  specs: [cuda@11.1.0%gcc@9.3.0, protobuf%gcc@9.3.0, cudnn%gcc@9.3.0, cmake%gcc@9.3.0]
+  view: true

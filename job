@@ -16,11 +16,13 @@ BUDGET=10
 FFBUDGET=10
 ALPHA=1.05
 NUM_GPUS=4
+LAYERS=5
 # python3 -u alexnet_big.py "$BATCH" --export --print-subst --budget 0 | tee "/home/groups/aaiken/unger/models/alexnet-big/trace_${BATCH}.txt"
-FILENAME="/home/groups/aaiken/unger/models/nasneta-2/trace-${BUDGET}x${FFBUDGET}_${BATCH}_alpha${ALPHA}_g${NUM_GPUS}.txt"
+MODELS_DIR="$HOME/models/"
+FILENAME="$MODELS_DIR/nasneta-2/trace-${BUDGET}x${FFBUDGET}_${BATCH}_alpha${ALPHA}_g${NUM_GPUS}_l${LAYERS}.txt"
 FILEDIR="$(dirname "$FILENAME")"
 mkdir -p "$FILEDIR"
-python3 -u nasnet_a.py "$BATCH" -n 5 --export --print-subst --budget "$BUDGET" --ff-budget "$FFBUDGET" --output-dir "$FILEDIR" --alpha "$ALPHA" --gpus "$NUM_GPUS" | tee "$FILENAME"
+python3 -u nasnet_a.py "$BATCH" -n "$LAYERS" --export --print-subst --budget "$BUDGET" --ff-budget "$FFBUDGET" --output-dir "$FILEDIR" --alpha "$ALPHA" --gpus "$NUM_GPUS" | tee "$FILENAME"
 # python3 -u nasrnn.py "$BATCH" --export --print-subst --budget 10 | tee "$FILENAME"
 
 echo "DONE!"
